@@ -1,0 +1,170 @@
+@model AutoTechHub.Models.ViewModels.ArticleEditViewModel
+@{
+    ViewData["Title"] = "Chỉnh Sửa Bài Viết";
+}
+
+<div class="container my-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 small">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Articles" asp-action="Index">Bài viết</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Chỉnh sửa bài viết</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-0">
+                <i class="bi bi-pencil-square text-primary me-2"></i>Chỉnh Sửa Bài Viết
+            </h2>
+        </div>
+
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill btn-sm px-3">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại bài viết
+        </a>
+    </div>
+
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3" role="alert"></div>
+
+        <div class="row g-4">
+            <!-- Left: Settings -->
+            <div class="col-lg-4">
+                <div class="card bg-body border rounded-4 p-4 shadow-sm mb-4">
+                    <h5 class="fw-bold mb-3 text-primary">
+                        <i class="bi bi-gear-wide-connected me-2"></i>Cài Đặt Bài Viết
+                    </h5>
+
+                    <!-- Category -->
+                    <div class="mb-3">
+                        <label asp-for="CategoryId" class="form-label fw-semibold small"></label>
+                        <select asp-for="CategoryId" class="form-select" required>
+                            <option value="">-- Chọn chuyên mục --</option>
+                            @foreach (var cat in Model.AvailableCategories)
+                            {
+                                <option value="@cat.Id" selected="@(cat.Id == Model.CategoryId)">@cat.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="mb-3">
+                        <label asp-for="TagsString" class="form-label fw-semibold small"></label>
+                        <input asp-for="TagsString" class="form-control" placeholder="PLC Siemens, S7-1200, Modbus TCP" />
+                        <div class="form-text small">Nhập các từ khóa phân cách bởi dấu phẩy.</div>
+                    </div>
+
+                    <!-- Author Info -->
+                    <div class="mb-3">
+                        <label asp-for="AuthorName" class="form-label fw-semibold small"></label>
+                        <input asp-for="AuthorName" class="form-control" required />
+                        <span asp-validation-for="AuthorName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="AuthorEmail" class="form-label fw-semibold small"></label>
+                        <input asp-for="AuthorEmail" class="form-control" />
+                    </div>
+
+                    <!-- Thumbnail URL -->
+                    <div class="mb-3">
+                        <label asp-for="ThumbnailUrl" class="form-label fw-semibold small"></label>
+                        <input asp-for="ThumbnailUrl" class="form-control" placeholder="https://images.unsplash.com/..." />
+                    </div>
+
+                    <!-- Checkboxes -->
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" asp-for="IsFeatured" id="isFeaturedCheck">
+                        <label class="form-check-label fw-semibold small" for="isFeaturedCheck">Đánh dấu bài viết nổi bật (Featured)</label>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" asp-for="IsPublished" id="isPublishedCheck">
+                        <label class="form-check-label fw-semibold small" for="isPublishedCheck">Đang xuất bản (Public)</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill py-2.5 fw-bold shadow-sm mt-3">
+                        <i class="bi bi-save me-1"></i> Lưu thay đổi
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Content Editor -->
+            <div class="col-lg-8">
+                <div class="card bg-body border rounded-4 p-4 shadow-sm mb-4">
+                    <!-- Title -->
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label fw-bold"></label>
+                        <input asp-for="Title" class="form-control form-control-lg fw-bold" required />
+                        <span asp-validation-for="Title" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="mb-3">
+                        <label asp-for="Summary" class="form-label fw-bold"></label>
+                        <textarea asp-for="Summary" rows="2" class="form-control" required></textarea>
+                        <span asp-validation-for="Summary" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Formatting Toolbar -->
+                    <div class="d-flex flex-wrap gap-1 p-2 bg-surface-alt rounded-3 border mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('## ', '')" title="Heading 2"><strong>H2</strong></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('### ', '')" title="Heading 3"><strong>H3</strong></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('**', '**')" title="Đậm"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('*', '*')" title="Nghiêng"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('```csharp\n', '\n```')" title="Khối mã C#"><i class="bi bi-code-slash"></i> C#</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('```python\n', '\n```')" title="Khối mã Python"><i class="bi bi-code-square"></i> Python</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('| Cột 1 | Cột 2 |\n| :--- | :--- |\n| Giá trị 1 | Giá trị 2 |\n', '')" title="Bảng"><i class="bi bi-table"></i> Bảng</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('> [!IMPORTANT]\n> ', '')" title="Hộp ghi chú quan trọng"><i class="bi bi-info-circle"></i> Note</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('[Tiêu đề link](', 'https://example.com)')" title="Chèn link"><i class="bi bi-link-45deg"></i> Link</button>
+                    </div>
+
+                    <!-- Editor & Preview Tabs -->
+                    <ul class="nav nav-tabs mb-2" id="editorTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold small" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit-pane" type="button" role="tab">
+                                <i class="bi bi-code me-1"></i> Soạn thảo Markdown
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold small" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview-pane" type="button" role="tab">
+                                <i class="bi bi-eye me-1"></i> Xem trước (Live Preview)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="editorTabContent">
+                        <div class="tab-pane fade show active" id="edit-pane" role="tabpanel">
+                            <textarea asp-for="ContentMarkdown" id="markdown-editor-input" class="form-control editor-textarea" required></textarea>
+                            <span asp-validation-for="ContentMarkdown" class="text-danger small"></span>
+                        </div>
+                        <div class="tab-pane fade" id="preview-pane" role="tabpanel">
+                            <div id="markdown-preview-pane" class="preview-pane article-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function insertMarkdown(startTag, endTag) {
+            const textarea = document.getElementById('markdown-editor-input');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            const replacement = startTag + selectedText + endTag;
+            
+            textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+            textarea.focus();
+            textarea.setSelectionRange(start + startTag.length, end + startTag.length);
+            
+            textarea.dispatchEvent(new Event('input'));
+        }
+    </script>
+}

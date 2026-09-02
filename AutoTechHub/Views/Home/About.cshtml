@@ -1,0 +1,59 @@
+@{
+    ViewData["Title"] = "Giới Thiệu - AutoTech Hub";
+}
+
+<div class="container my-5" style="max-width: 860px;">
+    <div class="text-center mb-5">
+        <span class="badge bg-primary-subtle text-primary px-3 py-1.5 rounded-pill fw-semibold mb-2">
+            <i class="bi bi-info-circle-fill me-1"></i>Về Chúng Tôi
+        </span>
+        <h1 class="fw-bold display-6">AutoTech Hub - Nền Tảng Tri Thức Tự Động Hóa</h1>
+        <p class="lead text-muted">Được tạo ra với sứ mệnh kết nối, chia sẻ kinh nghiệm kỹ thuật và giải pháp tự động hóa 4.0 thực chiến cho cộng đồng kỹ sư.</p>
+    </div>
+
+    <div class="card bg-body border rounded-4 p-4 p-md-5 shadow-sm mb-4">
+        <h4 class="fw-bold text-primary mb-3">🎯 Mục Tiêu Phát Triển</h4>
+        <p class="text-muted" style="line-height: 1.8;">
+            Tự động hóa không chỉ giới hạn trong phòng thí nghiệm mà đang hiện diện ở mọi ngóc ngách của nền sản xuất công nghiệp và vận hành doanh nghiệp. **AutoTech Hub** tập trung chia sẻ các bài viết có tính ứng dụng cao, code mẫu thực chiến và kinh nghiệm xử lý sự cố trong thực tế.
+        </p>
+
+        <h4 class="fw-bold text-primary mt-4 mb-3">🚀 Các Lĩnh Vực Trọng Tâm</h4>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="p-3 bg-surface-alt rounded-3 border">
+                    <h6 class="fw-bold"><i class="bi bi-gear-wide-connected text-primary me-2"></i>Tự Động Hóa Công Nghiệp</h6>
+                    <p class="small text-muted mb-0">Lập trình PLC Siemens, Mitsubishi, Omron, SCADA, mạng Modbus TCP/RTU, OPC UA, truyền thông công nghiệp.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-surface-alt rounded-3 border">
+                    <h6 class="fw-bold"><i class="bi bi-robot text-success me-2"></i>RPA & Tự Động Hóa Phần Mềm</h6>
+                    <p class="small text-muted mb-0">Playwright, Selenium, C# Bot, Python Scripts tự động hóa quy trình nghiệp vụ văn phòng.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-surface-alt rounded-3 border">
+                    <h6 class="fw-bold"><i class="bi bi-cpu text-warning me-2"></i>IoT & Hệ Thống Nhúng</h6>
+                    <p class="small text-muted mb-0">ESP32, STM32, Arduino, MQTT Broker, Dashboard giám sát nhiệt độ, năng lượng nhà máy.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-surface-alt rounded-3 border">
+                    <h6 class="fw-bold"><i class="bi bi-eye text-danger me-2"></i>AI & Thị Giác Máy Tính</h6>
+                    <p class="small text-muted mb-0">Ứng dụng OpenCV, YOLO phát hiện sản phẩm lỗi và kích hoạt cơ cấu phân loại tự động.</p>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="fw-bold text-primary mt-5 mb-3">🤝 Đóng Góp Bài Viết</h4>
+        <p class="text-muted" style="line-height: 1.8;">
+            Mỗi bài viết, mỗi đoạn mã mẫu bạn chia sẻ đều là tài liệu quý giá cho các bạn sinh viên và kỹ sư trẻ. Hãy cùng tham gia xây dựng cộng đồng bằng cách nhấn nút **Viết bài** ngay trên thanh điều hướng!
+        </p>
+
+        <div class="text-center mt-3">
+            <a asp-controller="Articles" asp-action="Create" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm">
+                <i class="bi bi-pencil-square me-1"></i> Bắt đầu viết bài chia sẻ
+            </a>
+        </div>
+    </div>
+</div>

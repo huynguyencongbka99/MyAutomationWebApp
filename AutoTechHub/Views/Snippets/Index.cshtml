@@ -1,0 +1,104 @@
+@model IEnumerable<AutoTechHub.Models.CodeSnippet>
+@{
+    ViewData["Title"] = "Kho Mã Nguồn Tự Động Hóa (Snippets & Cheatsheets)";
+    var languages = ViewBag.Languages as List<string> ?? new List<string>();
+    var selectedLanguage = ViewBag.SelectedLanguage as string;
+    var selectedCategory = ViewBag.SelectedCategory as string;
+    var searchQuery = ViewBag.SearchQuery as string;
+}
+
+<div class="container my-5">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <span class="badge bg-success-subtle text-success px-3 py-1.5 rounded-pill fw-semibold mb-1">
+                <i class="bi bi-terminal me-1"></i>Thư Viện Code Thực Chiến
+            </span>
+            <h2 class="fw-bold mb-0">Kho Code Snippets & Cheatsheets Tự Động Hóa</h2>
+            <p class="text-muted small mb-0">Các đoạn code mẫu thực tế về Modbus, S7, ESP32, Python, Playwright sẵn sàng copy & chạy.</p>
+        </div>
+
+        <a asp-action="Create" class="btn btn-primary rounded-pill btn-sm px-3 mt-3 mt-md-0 shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Thêm snippet mới
+        </a>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card bg-body border rounded-4 p-3 mb-4 shadow-sm">
+        <form asp-action="Index" method="get" class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="@searchQuery" class="form-control border-start-0" placeholder="Tìm theo tên hàm, thư viện hoặc từ khóa..." />
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <select name="lang" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Tất cả ngôn ngữ --</option>
+                    @foreach (var lang in languages)
+                    {
+                        <option value="@lang" selected="@(selectedLanguage == lang)">@lang.ToUpper()</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 rounded-3">
+                    Tìm kiếm
+                </button>
+                @if (!string.IsNullOrEmpty(searchQuery) || !string.IsNullOrEmpty(selectedLanguage) || !string.IsNullOrEmpty(selectedCategory))
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-3" title="Xóa bộ lọc">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                }
+            </div>
+        </form>
+    </div>
+
+    <!-- Snippets List -->
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5 bg-body rounded-4 border shadow-sm">
+            <i class="bi bi-code-square text-muted display-4 mb-2 d-block"></i>
+            <h5 class="fw-bold">Không tìm thấy đoạn mã nào</h5>
+            <p class="text-muted small">Hãy thử tìm kiếm với từ khóa khác.</p>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-4">
+            @foreach (var snippet in Model)
+            {
+                <div class="card bg-body border rounded-4 p-4 shadow-sm">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-dark font-monospace text-uppercase px-2.5 py-1">@snippet.Language</span>
+                                <span class="badge bg-primary-subtle text-primary">@snippet.CategoryTag</span>
+                                <span class="small text-muted"><i class="bi bi-person me-1"></i>@snippet.Author</span>
+                            </div>
+                            <h5 class="fw-bold mb-0">@snippet.Title</h5>
+                        </div>
+
+                        <form asp-action="Delete" asp-route-id="@snippet.Id" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa snippet này?');">
+                            <button type="submit" class="btn btn-outline-danger btn-xs py-1 px-2 rounded-2" title="Xóa snippet">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(snippet.Description))
+                    {
+                        <p class="text-muted small mb-2">@snippet.Description</p>
+                    }
+
+                    <div class="position-relative">
+                        <pre class="m-0"><code class="language-@snippet.Language.ToLower()">@snippet.CodeContent</code></pre>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

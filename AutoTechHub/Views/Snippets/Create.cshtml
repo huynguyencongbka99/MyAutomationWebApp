@@ -1,0 +1,80 @@
+@model AutoTechHub.Models.CodeSnippet
+@{
+    ViewData["Title"] = "Thêm Đoạn Mã Tự Động Hóa Mới";
+}
+
+<div class="container my-5" style="max-width: 800px;">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 small">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Snippets" asp-action="Index">Snippets</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Thêm mới</li>
+                </ol>
+            </nav>
+            <h3 class="fw-bold mb-0">Thêm Snippet / Mã Nguồn Mới</h3>
+        </div>
+
+        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill btn-sm px-3">
+            <i class="bi bi-x-lg me-1"></i> Hủy
+        </a>
+    </div>
+
+    <div class="card bg-body border rounded-4 p-4 shadow-sm">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label fw-bold"></label>
+                <input asp-for="Title" class="form-control" placeholder="Ví dụ: C# Đọc Holding Registers Modbus TCP" required />
+                <span asp-validation-for="Title" class="text-danger small"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Language" class="form-label fw-semibold small"></label>
+                    <select asp-for="Language" class="form-select" required>
+                        <option value="csharp">C# (.NET)</option>
+                        <option value="python">Python</option>
+                        <option value="cpp">C++ / Arduino</option>
+                        <option value="bash">Bash / Shell</option>
+                        <option value="json">JSON</option>
+                        <option value="yaml">YAML</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="CategoryTag" class="form-label fw-semibold small"></label>
+                    <select asp-for="CategoryTag" class="form-select" required>
+                        <option value="Industrial">Industrial (PLC/SCADA)</option>
+                        <option value="RPA">RPA & Automation</option>
+                        <option value="IoT">IoT & Embedded</option>
+                        <option value="DevOps">DevOps & CI/CD</option>
+                        <option value="Vision">AI & Vision</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label fw-semibold small"></label>
+                <input asp-for="Description" class="form-control" placeholder="Mô tả chức năng hoặc cách sử dụng đoạn mã..." />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Author" class="form-label fw-semibold small"></label>
+                <input asp-for="Author" class="form-control" placeholder="Tên tác giả hoặc nguồn..." />
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="CodeContent" class="form-label fw-bold"></label>
+                <textarea asp-for="CodeContent" rows="10" class="form-control font-monospace" placeholder="// Dán mã nguồn vào đây..." required style="background-color: var(--code-bg); color: var(--code-text);"></textarea>
+                <span asp-validation-for="CodeContent" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 rounded-pill py-2.5 fw-bold shadow-sm">
+                <i class="bi bi-save me-1"></i> Lưu Đoạn Mã Này
+            </button>
+        </form>
+    </div>
+</div>

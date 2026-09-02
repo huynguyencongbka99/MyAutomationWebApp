@@ -1,0 +1,179 @@
+@model AutoTechHub.Models.ViewModels.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Quản Trị & Thống Kê Website";
+}
+
+<div class="container my-5">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-0">
+                <i class="bi bi-speedometer2 text-primary me-2"></i>Bảng Điều Khiển Quản Trị
+            </h2>
+            <p class="text-muted small mb-0">Theo dõi số liệu tương tác và quản lý danh sách bài viết trên hệ thống AutoTech Hub.</p>
+        </div>
+
+        <a asp-controller="Articles" asp-action="Create" class="btn btn-primary rounded-pill px-3 shadow-sm">
+            <i class="bi bi-pencil-square me-1"></i> Đăng bài viết mới
+        </a>
+    </div>
+
+    <!-- Metrics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+                <div class="fs-4 fw-bold text-primary">@Model.TotalArticles</div>
+                <div class="small text-muted fw-semibold">Tổng bài viết</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+                <div class="fs-4 fw-bold text-success">@Model.PublishedArticles</div>
+                <div class="small text-muted fw-semibold">Đã xuất bản</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+                <div class="fs-4 fw-bold text-info">@Model.TotalViews.ToString("N0")</div>
+                <div class="small text-muted fw-semibold">Lượt xem</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+                <div class="fs-4 fw-bold text-danger">@Model.TotalLikes</div>
+                <div class="small text-muted fw-semibold">Lượt thích</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+                <div class="fs-4 fw-bold text-warning">@Model.TotalComments</div>
+                <div class="small text-muted fw-semibold">Bình luận</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+                <div class="fs-4 fw-bold text-secondary">@Model.TotalSnippets</div>
+                <div class="small text-muted fw-semibold">Snippets</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Articles Management Table -->
+    <div class="card bg-body border rounded-4 p-4 shadow-sm mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-table me-2 text-primary"></i>Danh Sách Bài Viết Gần Đây
+            </h5>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tiêu đề</th>
+                        <th>Chuyên mục</th>
+                        <th>Tác giả</th>
+                        <th>Lượt xem</th>
+                        <th>Lượt thích</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                        <th class="text-end">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var article in Model.RecentArticles)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="fw-bold text-decoration-none text-reset hover-primary d-block text-truncate" style="max-width: 320px;">
+                                    @article.Title
+                                </a>
+                                @if (article.IsFeatured)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger small">Nổi bật</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-@article.Category.BadgeColor-subtle text-@article.Category.BadgeColor">
+                                    @article.Category.Name
+                                </span>
+                            </td>
+                            <td class="small">@article.AuthorName</td>
+                            <td class="small fw-semibold">@article.ViewCount</td>
+                            <td class="small fw-semibold text-danger">@article.LikeCount</td>
+                            <td>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="pubSwitch_@article.Id" checked="@article.IsPublished" onchange="togglePublish(@article.Id, this)">
+                                    <label class="form-check-label small" for="pubSwitch_@article.Id">
+                                        <span id="pubLabel_@article.Id">@(article.IsPublished ? "Hiện" : "Ẩn")</span>
+                                    </label>
+                                </div>
+                            </td>
+                            <td class="small text-muted">@article.CreatedAt.ToString("dd/MM/yyyy")</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a asp-controller="Articles" asp-action="Edit" asp-route-id="@article.Id" class="btn btn-outline-secondary" title="Chỉnh sửa">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="btn btn-outline-primary" title="Xem chi tiết">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                    <form asp-controller="Admin" asp-action="DeleteArticle" asp-route-id="@article.Id" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa bài viết này?');" style="display:inline;">
+                                        <button type="submit" class="btn btn-outline-danger" title="Xóa">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Comments -->
+    @if (Model.RecentComments.Any())
+    {
+        <div class="card bg-body border rounded-4 p-4 shadow-sm">
+            <h5 class="fw-bold mb-3">
+                <i class="bi bi-chat-quote text-primary me-2"></i>Bình Luận Mới Nhất
+            </h5>
+            <div class="list-group list-group-flush">
+                @foreach (var c in Model.RecentComments)
+                {
+                    <div class="list-group-item px-0 py-3 bg-transparent border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold">@c.AuthorName <span class="text-muted fw-normal small">trên bài:</span> <a asp-controller="Articles" asp-action="Details" asp-route-slug="@c.Article.Slug">@c.Article.Title</a></span>
+                            <span class="small text-muted">@c.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <p class="mb-0 text-muted small">@c.Content</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        async function togglePublish(articleId, checkbox) {
+            try {
+                const response = await fetch(`/Admin/TogglePublish/${articleId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const label = document.getElementById(`pubLabel_${articleId}`);
+                    if (label) {
+                        label.textContent = data.isPublished ? "Hiện" : "Ẩn";
+                    }
+                }
+            } catch (err) {
+                console.error("Lỗi toggle publish: ", err);
+                checkbox.checked = !checkbox.checked;
+            }
+        }
+    </script>
+}

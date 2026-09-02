@@ -1,0 +1,279 @@
+@model AutoTechHub.Models.ViewModels.HomeViewModel
+@{
+    ViewData["Title"] = "Trang Chủ - Nền Tảng Chia Sẻ Kiến Thức Tự Động Hóa";
+}
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container text-center">
+        <div class="hero-badge">
+            <i class="bi bi-stars"></i>
+            <span>Kho Tri Thức & Giải Pháp Tự Động Hóa 4.0</span>
+        </div>
+        <h1 class="hero-title mb-3">
+            Chia Sẻ Kiến Thức <br class="d-none d-md-block" />
+            <span class="hero-highlight">Tự Động Hóa Thực Chiến</span>
+        </h1>
+        <p class="lead text-muted mx-auto mb-4" style="max-width: 720px; font-size: 1.15rem;">
+            Khám phá các hướng dẫn chuyên sâu về <strong>PLC/SCADA</strong>, <strong>RPA Web & Desktop</strong>, <strong>Hệ thống IoT</strong>, và <strong>Thị giác máy tính AI</strong> từ các kỹ sư tự động hóa.
+        </p>
+
+        <!-- Search Bar -->
+        <div class="search-box-wrap mx-auto mb-4">
+            <form asp-controller="Articles" asp-action="Index" method="get">
+                <i class="bi bi-search search-box-icon"></i>
+                <input type="text" name="q" class="form-control search-box-input w-100" placeholder="Tìm kiếm bài viết (ví dụ: PLC Siemens, Modbus TCP, Playwright, ESP32...)" />
+            </form>
+        </div>
+
+        <!-- Quick Tags -->
+        <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-4">
+            <span class="text-muted small fw-semibold"><i class="bi bi-fire text-danger me-1"></i>Từ khóa hot:</span>
+            @foreach (var tag in Model.PopularTags.Take(6))
+            {
+                <a asp-controller="Articles" asp-action="Index" asp-route-tag="@tag.Slug" class="tag-badge">
+                    #@tag.Name
+                </a>
+            }
+        </div>
+
+        <!-- Fast Stats Counters -->
+        <div class="row g-3 justify-content-center mt-3" style="max-width: 850px; margin: 0 auto;">
+            <div class="col-6 col-md-3">
+                <div class="p-3 bg-body rounded-4 border shadow-sm">
+                    <div class="fs-3 fw-bold text-primary">@Model.TotalArticles</div>
+                    <div class="small text-muted fw-semibold">Bài viết kỹ thuật</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-3 bg-body rounded-4 border shadow-sm">
+                    <div class="fs-3 fw-bold text-info">@Model.TotalCategories</div>
+                    <div class="small text-muted fw-semibold">Chuyên mục chính</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-3 bg-body rounded-4 border shadow-sm">
+                    <div class="fs-3 fw-bold text-success">@Model.TotalSnippets</div>
+                    <div class="small text-muted fw-semibold">Mã nguồn mẫu</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-3 bg-body rounded-4 border shadow-sm">
+                    <div class="fs-3 fw-bold text-warning">@Model.TotalViews.ToString("N0")</div>
+                    <div class="small text-muted fw-semibold">Lượt đọc</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Container -->
+<div class="container my-5">
+
+    <!-- 1. Featured Articles -->
+    @if (Model.FeaturedArticles.Any())
+    {
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <span class="badge bg-danger-subtle text-danger px-2.5 py-1.5 rounded-pill fw-semibold mb-1">
+                    <i class="bi bi-lightning-charge-fill me-1"></i>Được Đề Xuất
+                </span>
+                <h3 class="fw-bold mb-0">Bài Viết Nổi Bật</h3>
+            </div>
+            <a asp-controller="Articles" asp-action="Index" class="btn btn-sm btn-outline-primary rounded-pill">
+                Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="row g-4 mb-5">
+            @foreach (var article in Model.FeaturedArticles)
+            {
+                <div class="col-lg-6">
+                    <div class="tech-card">
+                        <div class="card-thumb-wrap">
+                            <img src="@article.ThumbnailUrl" alt="@article.Title" class="card-thumb-img" onerror="this.src='https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'" />
+                            <span class="card-category-badge bg-@article.Category.BadgeColor text-white">
+                                <i class="bi @article.Category.Icon me-1"></i>@article.Category.Name
+                            </span>
+                        </div>
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div class="d-flex align-items-center gap-3 text-muted small mb-2">
+                                <span><i class="bi bi-calendar3 me-1"></i>@article.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                <span><i class="bi bi-clock me-1"></i>@article.ReadingTimeMinutes phút đọc</span>
+                                <span class="ms-auto"><i class="bi bi-eye me-1"></i>@article.ViewCount</span>
+                            </div>
+                            <h4 class="card-title fw-bold mb-2">
+                                <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="text-decoration-none text-reset hover-primary">
+                                    @article.Title
+                                </a>
+                            </h4>
+                            <p class="card-text text-muted mb-4 flex-grow-1" style="font-size: 0.95rem;">
+                                @article.Summary
+                            </p>
+                            <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+                                <div class="small fw-semibold text-muted">
+                                    <i class="bi bi-person-circle me-1 text-primary"></i>@article.AuthorName
+                                </div>
+                                <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="btn btn-sm btn-primary rounded-pill px-3">
+                                    Đọc tiếp <i class="bi bi-chevron-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- 2. Automation Categories Showcase -->
+    <div class="mb-5">
+        <div class="text-center mb-4">
+            <span class="badge bg-primary-subtle text-primary px-3 py-1.5 rounded-pill fw-semibold mb-1">
+                <i class="bi bi-layers-fill me-1"></i>Hệ Sinh Thái
+            </span>
+            <h3 class="fw-bold">Chuyên Mục Tự Động Hóa</h3>
+            <p class="text-muted small">Khám phá nội dung theo đúng mảng kỹ thuật chuyên môn của bạn</p>
+        </div>
+
+        <div class="row g-3">
+            @foreach (var cat in Model.Categories)
+            {
+                <div class="col-md-6 col-lg">
+                    <a asp-controller="Categories" asp-action="Details" asp-route-slug="@cat.Slug" class="category-card h-100">
+                        <div class="cat-icon-circle bg-@cat.BadgeColor-subtle text-@cat.BadgeColor">
+                            <i class="bi @cat.Icon"></i>
+                        </div>
+                        <h5 class="fw-bold mb-1">@cat.Name</h5>
+                        <p class="small text-muted mb-2" style="font-size: 0.82rem; line-height: 1.4;">
+                            @cat.Description
+                        </p>
+                        <span class="small fw-semibold text-primary">
+                            @cat.Articles.Count bài viết <i class="bi bi-arrow-right ms-1"></i>
+                        </span>
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- 3. Latest Articles & Sidebar -->
+    <div class="row g-4">
+        <!-- Main Feed (Latest Posts) -->
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">
+                    <i class="bi bi-clock-history text-primary me-2"></i>Bài Viết Mới Cập Nhật
+                </h4>
+                <a asp-controller="Articles" asp-action="Index" class="small text-decoration-none fw-semibold">
+                    Xem tất cả bài viết <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+
+            <div class="d-flex flex-column gap-4">
+                @foreach (var article in Model.LatestArticles)
+                {
+                    <div class="tech-card">
+                        <div class="row g-0 align-items-center">
+                            <div class="col-md-4">
+                                <div class="card-thumb-wrap h-100" style="min-height: 180px;">
+                                    <img src="@article.ThumbnailUrl" alt="@article.Title" class="card-thumb-img" onerror="this.src='https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80'" />
+                                    <span class="card-category-badge bg-@article.Category.BadgeColor text-white">
+                                        @article.Category.Name
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body p-3.5">
+                                    <div class="d-flex align-items-center gap-2 text-muted small mb-1.5">
+                                        <span><i class="bi bi-calendar3 me-1"></i>@article.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                        <span>•</span>
+                                        <span><i class="bi bi-clock me-1"></i>@article.ReadingTimeMinutes phút đọc</span>
+                                    </div>
+                                    <h5 class="fw-bold mb-2">
+                                        <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="text-decoration-none text-reset hover-primary">
+                                            @article.Title
+                                        </a>
+                                    </h5>
+                                    <p class="text-muted small mb-3 text-truncate-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                        @article.Summary
+                                    </p>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var at in article.ArticleTags.Take(3))
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary small">#@at.Tag.Name</span>
+                                            }
+                                        </div>
+                                        <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            Đọc bài
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- 1. Quick Code Snippet Box -->
+            <div class="card bg-body border rounded-4 p-4 mb-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-primary">
+                        <i class="bi bi-code-slash me-2"></i>Kho Snippets Nhanh
+                    </h5>
+                    <a asp-controller="Snippets" asp-action="Index" class="small text-decoration-none">Xem thêm</a>
+                </div>
+                <p class="small text-muted mb-3">Các đoạn code mẫu thực chiến copy 1-click cho dự án của bạn:</p>
+
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var snip in Model.FeaturedSnippets)
+                    {
+                        <div class="p-3 bg-surface-alt rounded-3 border">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-dark font-monospace text-uppercase small">@snip.Language</span>
+                                <span class="small text-muted">@snip.CategoryTag</span>
+                            </div>
+                            <h6 class="fw-bold mb-1 fs-7">@snip.Title</h6>
+                            <p class="small text-muted mb-2 text-truncate">@snip.Description</p>
+                            <a asp-controller="Snippets" asp-action="Index" class="btn btn-xs btn-outline-secondary w-100 rounded-2 py-1">
+                                <i class="bi bi-clipboard me-1"></i>Xem & Copy mã nguồn
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- 2. Popular Tags Cloud -->
+            <div class="card bg-body border rounded-4 p-4 mb-4 shadow-sm">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-tags-fill text-primary me-2"></i>Chủ Đề & Thẻ Phổ Biến
+                </h5>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var tag in Model.PopularTags)
+                    {
+                        <a asp-controller="Articles" asp-action="Index" asp-route-tag="@tag.Slug" class="tag-badge">
+                            #@tag.Name <span class="badge bg-secondary rounded-pill ms-1">@tag.ArticleTags.Count</span>
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <!-- 3. Contribution Callout -->
+            <div class="card bg-primary text-white border-0 rounded-4 p-4 shadow-sm">
+                <h5 class="fw-bold mb-2">
+                    <i class="bi bi-pencil-square me-2"></i>Chia Sẻ Kiến Thức Của Bạn
+                </h5>
+                <p class="small opacity-90 mb-3">
+                    Bạn có kinh nghiệm hay về PLC, giải pháp IoT hoặc kịch bản tự động hóa muốn chia sẻ với cộng đồng?
+                </p>
+                <a asp-controller="Articles" asp-action="Create" class="btn btn-light text-primary fw-bold rounded-pill">
+                    <i class="bi bi-plus-circle me-1"></i> Đăng bài viết ngay
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>

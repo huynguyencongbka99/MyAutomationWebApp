@@ -381,64 +381,76 @@ namespace AutoTechHub.Data
             if (!sqliteContext.Categories.Any() && !sqliteContext.Users.Any())
                 return;
 
-            using var tx = pgContext.Database.BeginTransaction();
-            try
+            var strategy = pgContext.Database.CreateExecutionStrategy();
+            strategy.Execute(() =>
             {
-                var categories = sqliteContext.Categories.AsNoTracking().ToList();
-                var tags = sqliteContext.Tags.AsNoTracking().ToList();
-                var users = sqliteContext.Users.AsNoTracking().ToList();
-                var settings = sqliteContext.SiteSettings.AsNoTracking().ToList();
-                var articles = sqliteContext.Articles.AsNoTracking().ToList();
-                var articleTags = sqliteContext.ArticleTags.AsNoTracking().ToList();
-                var comments = sqliteContext.Comments.AsNoTracking().ToList();
-                var snippets = sqliteContext.CodeSnippets.AsNoTracking().ToList();
-                var ads = sqliteContext.Advertisements.AsNoTracking().ToList();
-                var products = sqliteContext.Products.AsNoTracking().ToList();
-                var inquiries = sqliteContext.ProductInquiries.AsNoTracking().ToList();
-                var webBlocks = sqliteContext.WebBlocks.AsNoTracking().ToList();
-                var mediaAssets = sqliteContext.MediaAssets.AsNoTracking().ToList();
-
-                if (categories.Any()) pgContext.Categories.AddRange(categories);
-                if (tags.Any()) pgContext.Tags.AddRange(tags);
-                if (users.Any()) pgContext.Users.AddRange(users);
-                if (settings.Any()) pgContext.SiteSettings.AddRange(settings);
-                pgContext.SaveChanges();
-
-                if (articles.Any()) pgContext.Articles.AddRange(articles);
-                pgContext.SaveChanges();
-
-                if (articleTags.Any()) pgContext.ArticleTags.AddRange(articleTags);
-                if (comments.Any()) pgContext.Comments.AddRange(comments);
-                if (snippets.Any()) pgContext.CodeSnippets.AddRange(snippets);
-                if (ads.Any()) pgContext.Advertisements.AddRange(ads);
-                if (products.Any()) pgContext.Products.AddRange(products);
-                if (webBlocks.Any()) pgContext.WebBlocks.AddRange(webBlocks);
-                if (mediaAssets.Any()) pgContext.MediaAssets.AddRange(mediaAssets);
-                pgContext.SaveChanges();
-
-                if (inquiries.Any()) pgContext.ProductInquiries.AddRange(inquiries);
-                pgContext.SaveChanges();
-
-                var identityTables = new[]
+                pgContext.ChangeTracker.Clear();
+                using var tx = pgContext.Database.BeginTransaction();
+                try
                 {
-                    "Categories", "Tags", "Users", "SiteSettings",
-                    "Articles", "Comments", "CodeSnippets", "Advertisements",
-                    "Products", "ProductInquiries", "WebBlocks", "MediaAssets"
-                };
+                    var categories = sqliteContext.Categories.AsNoTracking().ToList();
+                    var tags = sqliteContext.Tags.AsNoTracking().ToList();
+                    var users = sqliteContext.Users.AsNoTracking().ToList();
+                    var settings = sqliteContext.SiteSettings.AsNoTracking().ToList();
+                    var articles = sqliteContext.Articles.AsNoTracking().ToList();
+                    var articleTags = sqliteContext.ArticleTags.AsNoTracking().ToList();
+                    var comments = sqliteContext.Comments.AsNoTracking().ToList();
+                    var snippets = sqliteContext.CodeSnippets.AsNoTracking().ToList();
+                    var ads = sqliteContext.Advertisements.AsNoTracking().ToList();
+                    var products = sqliteContext.Products.AsNoTracking().ToList();
+                    var inquiries = sqliteContext.ProductInquiries.AsNoTracking().ToList();
+                    var webBlocks = sqliteContext.WebBlocks.AsNoTracking().ToList();
+                    var mediaAssets = sqliteContext.MediaAssets.AsNoTracking().ToList();
 
-                foreach (var tbl in identityTables)
-                {
-                    pgContext.Database.ExecuteSqlRaw(
-                        $"SELECT setval(pg_get_serial_sequence('\"{tbl}\"', 'Id'), COALESCE((SELECT MAX(\"Id\") FROM \"{tbl}\"), 1), true);");
+                    // Remove placeholder default SiteSettings if created before migration completed
+                    if (settings.Any() && pgContext.SiteSettings.Any())
+                    {
+                        pgContext.SiteSettings.RemoveRange(pgContext.SiteSettings.ToList());
+                        pgContext.SaveChanges();
+                    }
+
+                    if (categories.Any()) pgContext.Categories.AddRange(categories);
+                    if (tags.Any()) pgContext.Tags.AddRange(tags);
+                    if (users.Any()) pgContext.Users.AddRange(users);
+                    if (settings.Any()) pgContext.SiteSettings.AddRange(settings);
+                    pgContext.SaveChanges();
+
+                    if (articles.Any()) pgContext.Articles.AddRange(articles);
+                    pgContext.SaveChanges();
+
+                    if (articleTags.Any()) pgContext.ArticleTags.AddRange(articleTags);
+                    if (comments.Any()) pgContext.Comments.AddRange(comments);
+                    if (snippets.Any()) pgContext.CodeSnippets.AddRange(snippets);
+                    if (ads.Any()) pgContext.Advertisements.AddRange(ads);
+                    if (products.Any()) pgContext.Products.AddRange(products);
+                    if (webBlocks.Any()) pgContext.WebBlocks.AddRange(webBlocks);
+                    if (mediaAssets.Any()) pgContext.MediaAssets.AddRange(mediaAssets);
+                    pgContext.SaveChanges();
+
+                    if (inquiries.Any()) pgContext.ProductInquiries.AddRange(inquiries);
+                    pgContext.SaveChanges();
+
+                    var identityTables = new[]
+                    {
+                        "Categories", "Tags", "Users", "SiteSettings",
+                        "Articles", "Comments", "CodeSnippets", "Advertisements",
+                        "Products", "ProductInquiries", "WebBlocks", "MediaAssets"
+                    };
+
+                    foreach (var tbl in identityTables)
+                    {
+                        pgContext.Database.ExecuteSqlRaw(
+                            $"SELECT setval(pg_get_serial_sequence('\"{tbl}\"', 'Id'), COALESCE((SELECT MAX(\"Id\") FROM \"{tbl}\"), 1), true);");
+                    }
+
+                    tx.Commit();
                 }
-
-                tx.Commit();
-            }
-            catch
-            {
-                tx.Rollback();
-                throw;
-            }
+                catch
+                {
+                    tx.Rollback();
+                    throw;
+                }
+            });
         }
 
         private static string GetSeedPassword(string envKey, string fallback)

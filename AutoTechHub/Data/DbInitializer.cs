@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.IO;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using AutoTechHub.Models;
 using AutoTechHub.Services;
 
@@ -12,11 +15,740 @@ namespace AutoTechHub.Data
         {
             context.Database.EnsureCreated();
 
-            // Look for any categories
-            if (context.Categories.Any())
+            if (context.Database.IsSqlite())
             {
-                return; // DB has been seeded
+                EnsureSqliteSchemaUpgraded(context);
             }
+            else if (context.Database.IsNpgsql())
+            {
+                EnsurePostgresSchemaUpgraded(context);
+                MigrateFromSqliteIfPostgresEmpty(context);
+            }
+
+            // Seed Users & rotate legacy insecure demo passwords if still present
+            SeedUsers(context);
+            RotateLegacyDemoPasswords(context);
+
+            // Seed Site Settings
+            SeedSiteSettings(context);
+
+            // Seed Categories, Tags, Articles, Comments, Snippets if empty
+            if (!context.Categories.Any())
+            {
+                SeedBlogContent(context, markdownService);
+            }
+
+            // Seed Sample Advertisements & Products
+            SeedAds(context);
+            SeedProducts(context, markdownService);
+        }
+
+        private static void EnsureSqliteSchemaUpgraded(AppDbContext context)
+        {
+            var conn = context.Database.GetDbConnection();
+            var shouldClose = conn.State != ConnectionState.Open;
+            if (shouldClose)
+            {
+                conn.Open();
+            }
+
+            try
+            {
+                var ddlStatements = new[]
+                {
+                    @"CREATE TABLE IF NOT EXISTS ""Users"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_Users"" PRIMARY KEY AUTOINCREMENT,
+                        ""Username"" TEXT NOT NULL,
+                        ""Email"" TEXT NOT NULL,
+                        ""PasswordHash"" TEXT NOT NULL,
+                        ""FullName"" TEXT NOT NULL,
+                        ""Bio"" TEXT NULL,
+                        ""Role"" INTEGER NOT NULL DEFAULT 0,
+                        ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                        ""MustChangePassword"" INTEGER NOT NULL DEFAULT 0,
+                        ""PasswordChangedAt"" TEXT NULL,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        ""LastLoginAt"" TEXT NULL
+                    );",
+                    @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Users_Username"" ON ""Users"" (""Username"");",
+                    @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Users_Email"" ON ""Users"" (""Email"");",
+
+                    @"CREATE TABLE IF NOT EXISTS ""Advertisements"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_Advertisements"" PRIMARY KEY AUTOINCREMENT,
+                        ""Title"" TEXT NOT NULL,
+                        ""Description"" TEXT NULL,
+                        ""Placement"" INTEGER NOT NULL DEFAULT 1,
+                        ""AdType"" INTEGER NOT NULL DEFAULT 0,
+                        ""ImageUrl"" TEXT NULL,
+                        ""TargetUrl"" TEXT NULL,
+                        ""HtmlContent"" TEXT NULL,
+                        ""CtaText"" TEXT NULL,
+                        ""OpenInNewTab"" INTEGER NOT NULL DEFAULT 1,
+                        ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                        ""DisplayOrder"" INTEGER NOT NULL DEFAULT 0,
+                        ""StartDate"" TEXT NULL,
+                        ""EndDate"" TEXT NULL,
+                        ""ClickCount"" INTEGER NOT NULL DEFAULT 0,
+                        ""CreatedAt"" TEXT NOT NULL
+                    );",
+
+                    @"CREATE TABLE IF NOT EXISTS ""Products"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_Products"" PRIMARY KEY AUTOINCREMENT,
+                        ""Name"" TEXT NOT NULL,
+                        ""Slug"" TEXT NULL,
+                        ""Sku"" TEXT NULL,
+                        ""CategoryName"" TEXT NOT NULL,
+                        ""ShortDescription"" TEXT NOT NULL,
+                        ""DescriptionMarkdown"" TEXT NULL,
+                        ""DescriptionHtml"" TEXT NULL,
+                        ""Price"" TEXT NOT NULL,
+                        ""OriginalPrice"" TEXT NULL,
+                        ""Currency"" TEXT NULL,
+                        ""ImageUrl"" TEXT NULL,
+                        ""ExternalBuyUrl"" TEXT NULL,
+                        ""StockStatus"" INTEGER NOT NULL DEFAULT 0,
+                        ""IsFeatured"" INTEGER NOT NULL DEFAULT 0,
+                        ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                        ""DisplayOrder"" INTEGER NOT NULL DEFAULT 0,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        ""UpdatedAt"" TEXT NULL
+                    );",
+                    @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Products_Slug"" ON ""Products"" (""Slug"");",
+
+                    @"CREATE TABLE IF NOT EXISTS ""ProductInquiries"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_ProductInquiries"" PRIMARY KEY AUTOINCREMENT,
+                        ""ProductId"" INTEGER NOT NULL,
+                        ""CustomerName"" TEXT NOT NULL,
+                        ""Phone"" TEXT NOT NULL,
+                        ""Email"" TEXT NULL,
+                        ""Quantity"" INTEGER NOT NULL DEFAULT 1,
+                        ""Note"" TEXT NULL,
+                        ""Status"" INTEGER NOT NULL DEFAULT 0,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        CONSTRAINT ""FK_ProductInquiries_Products_ProductId"" FOREIGN KEY (""ProductId"") REFERENCES ""Products"" (""Id"") ON DELETE CASCADE
+                    );",
+
+                    @"CREATE TABLE IF NOT EXISTS ""SiteSettings"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_SiteSettings"" PRIMARY KEY AUTOINCREMENT,
+                        ""EnableAdsModule"" INTEGER NOT NULL DEFAULT 1,
+                        ""EnableShopModule"" INTEGER NOT NULL DEFAULT 1,
+                        ""ShopNavTitle"" TEXT NULL,
+                        ""ShopBannerTitle"" TEXT NULL,
+                        ""ShopBannerSubtitle"" TEXT NULL,
+                        ""ContactPhone"" TEXT NULL,
+                        ""ContactZalo"" TEXT NULL,
+                        ""ContactEmail"" TEXT NULL,
+                        ""SiteName"" TEXT NOT NULL DEFAULT 'AutoTechHub',
+                        ""SiteTagline"" TEXT NULL,
+                        ""LogoUrl"" TEXT NULL,
+                        ""FaviconUrl"" TEXT NULL,
+                        ""ShowBrandTextWithLogo"" INTEGER NOT NULL DEFAULT 1,
+                        ""PrimaryColor"" TEXT NULL,
+                        ""AccentColor"" TEXT NULL,
+                        ""FontFamily"" TEXT NULL,
+                        ""CardRadiusPx"" INTEGER NOT NULL DEFAULT 16,
+                        ""DefaultTheme"" TEXT NULL,
+                        ""CustomCss"" TEXT NULL,
+                        ""HomeLayoutJson"" TEXT NULL,
+                        ""HeroBadgeText"" TEXT NULL,
+                        ""HeroTitlePrefix"" TEXT NULL,
+                        ""HeroTitleHighlight"" TEXT NULL,
+                        ""HeroSubtitle"" TEXT NULL,
+                        ""HeroShowSearch"" INTEGER NOT NULL DEFAULT 1,
+                        ""HeroShowTags"" INTEGER NOT NULL DEFAULT 1,
+                        ""HeroShowStats"" INTEGER NOT NULL DEFAULT 1,
+                        ""HeroCtaText"" TEXT NULL,
+                        ""HeroCtaUrl"" TEXT NULL,
+                        ""FeaturedSectionTitle"" TEXT NULL,
+                        ""CategoriesSectionTitle"" TEXT NULL,
+                        ""LatestSectionTitle"" TEXT NULL,
+                        ""FooterDescription"" TEXT NULL,
+                        ""GithubUrl"" TEXT NULL,
+                        ""YoutubeUrl"" TEXT NULL,
+                        ""LinkedinUrl"" TEXT NULL,
+                        ""UpdatedAt"" TEXT NOT NULL
+                    );",
+
+                    @"CREATE TABLE IF NOT EXISTS ""WebBlocks"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_WebBlocks"" PRIMARY KEY AUTOINCREMENT,
+                        ""Title"" TEXT NOT NULL,
+                        ""Subtitle"" TEXT NULL,
+                        ""ContentMarkdown"" TEXT NULL,
+                        ""ContentHtml"" TEXT NULL,
+                        ""CustomHtmlCode"" TEXT NULL,
+                        ""ButtonText"" TEXT NULL,
+                        ""ButtonUrl"" TEXT NULL,
+                        ""BlockType"" INTEGER NOT NULL DEFAULT 0,
+                        ""StyleVariant"" INTEGER NOT NULL DEFAULT 1,
+                        ""DisplayOrder"" INTEGER NOT NULL DEFAULT 0,
+                        ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                        ""CreatedAt"" TEXT NOT NULL
+                    );",
+
+                    @"CREATE TABLE IF NOT EXISTS ""DataProtectionKeys"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_DataProtectionKeys"" PRIMARY KEY AUTOINCREMENT,
+                        ""FriendlyName"" TEXT NOT NULL,
+                        ""Xml"" TEXT NOT NULL
+                    );",
+
+                    @"CREATE TABLE IF NOT EXISTS ""MediaAssets"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_MediaAssets"" PRIMARY KEY AUTOINCREMENT,
+                        ""FileName"" TEXT NOT NULL,
+                        ""ContentType"" TEXT NOT NULL,
+                        ""Data"" BLOB NOT NULL,
+                        ""CreatedAt"" TEXT NOT NULL
+                    );"
+                };
+
+                foreach (var sql in ddlStatements)
+                {
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = sql;
+                    cmd.ExecuteNonQuery();
+                }
+
+                AddMissingSqliteColumns(conn, "Articles", new Dictionary<string, string>
+                {
+                    ["ApprovalStatus"] = @"ALTER TABLE ""Articles"" ADD COLUMN ""ApprovalStatus"" INTEGER NOT NULL DEFAULT 2;",
+                    ["AuthorUserId"] = @"ALTER TABLE ""Articles"" ADD COLUMN ""AuthorUserId"" INTEGER NULL;",
+                    ["ReviewedByUserId"] = @"ALTER TABLE ""Articles"" ADD COLUMN ""ReviewedByUserId"" INTEGER NULL;",
+                    ["ReviewedAt"] = @"ALTER TABLE ""Articles"" ADD COLUMN ""ReviewedAt"" TEXT NULL;",
+                    ["ReviewNote"] = @"ALTER TABLE ""Articles"" ADD COLUMN ""ReviewNote"" TEXT NULL;"
+                });
+
+                AddMissingSqliteColumns(conn, "Users", new Dictionary<string, string>
+                {
+                    ["MustChangePassword"] = @"ALTER TABLE ""Users"" ADD COLUMN ""MustChangePassword"" INTEGER NOT NULL DEFAULT 0;",
+                    ["PasswordChangedAt"] = @"ALTER TABLE ""Users"" ADD COLUMN ""PasswordChangedAt"" TEXT NULL;"
+                });
+
+                AddMissingSqliteColumns(conn, "SiteSettings", new Dictionary<string, string>
+                {
+                    ["SiteName"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""SiteName"" TEXT NOT NULL DEFAULT 'AutoTechHub';",
+                    ["SiteTagline"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""SiteTagline"" TEXT NULL;",
+                    ["LogoUrl"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""LogoUrl"" TEXT NULL;",
+                    ["FaviconUrl"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""FaviconUrl"" TEXT NULL;",
+                    ["ShowBrandTextWithLogo"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""ShowBrandTextWithLogo"" INTEGER NOT NULL DEFAULT 1;",
+                    ["PrimaryColor"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""PrimaryColor"" TEXT NULL;",
+                    ["AccentColor"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""AccentColor"" TEXT NULL;",
+                    ["FontFamily"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""FontFamily"" TEXT NULL;",
+                    ["CardRadiusPx"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""CardRadiusPx"" INTEGER NOT NULL DEFAULT 16;",
+                    ["DefaultTheme"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""DefaultTheme"" TEXT NULL;",
+                    ["CustomCss"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""CustomCss"" TEXT NULL;",
+                    ["HomeLayoutJson"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HomeLayoutJson"" TEXT NULL;",
+                    ["HeroBadgeText"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroBadgeText"" TEXT NULL;",
+                    ["HeroTitlePrefix"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroTitlePrefix"" TEXT NULL;",
+                    ["HeroTitleHighlight"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroTitleHighlight"" TEXT NULL;",
+                    ["HeroSubtitle"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroSubtitle"" TEXT NULL;",
+                    ["HeroShowSearch"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroShowSearch"" INTEGER NOT NULL DEFAULT 1;",
+                    ["HeroShowTags"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroShowTags"" INTEGER NOT NULL DEFAULT 1;",
+                    ["HeroShowStats"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroShowStats"" INTEGER NOT NULL DEFAULT 1;",
+                    ["HeroCtaText"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroCtaText"" TEXT NULL;",
+                    ["HeroCtaUrl"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""HeroCtaUrl"" TEXT NULL;",
+                    ["FeaturedSectionTitle"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""FeaturedSectionTitle"" TEXT NULL;",
+                    ["CategoriesSectionTitle"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""CategoriesSectionTitle"" TEXT NULL;",
+                    ["LatestSectionTitle"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""LatestSectionTitle"" TEXT NULL;",
+                    ["FooterDescription"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""FooterDescription"" TEXT NULL;",
+                    ["GithubUrl"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""GithubUrl"" TEXT NULL;",
+                    ["YoutubeUrl"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""YoutubeUrl"" TEXT NULL;",
+                    ["LinkedinUrl"] = @"ALTER TABLE ""SiteSettings"" ADD COLUMN ""LinkedinUrl"" TEXT NULL;"
+                });
+            }
+            finally
+            {
+                if (shouldClose)
+                {
+                    conn.Close();
+                }
+            }
+        }
+
+        private static void AddMissingSqliteColumns(System.Data.Common.DbConnection conn, string tableName, Dictionary<string, string> columns)
+        {
+            var existingCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var pragmaCmd = conn.CreateCommand())
+            {
+                pragmaCmd.CommandText = $@"PRAGMA table_info(""{tableName}"");";
+                using var reader = pragmaCmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    existingCols.Add(reader["name"].ToString());
+                }
+            }
+
+            foreach (var col in columns)
+            {
+                if (!existingCols.Contains(col.Key))
+                {
+                    using var alterCmd = conn.CreateCommand();
+                    alterCmd.CommandText = col.Value;
+                    alterCmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static void EnsurePostgresSchemaUpgraded(AppDbContext context)
+        {
+            var alterStatements = new[]
+            {
+                @"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""MustChangePassword"" boolean NOT NULL DEFAULT false;",
+                @"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""PasswordChangedAt"" timestamp without time zone NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""SiteName"" character varying(60) NOT NULL DEFAULT 'AutoTechHub';",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""SiteTagline"" character varying(150) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""LogoUrl"" character varying(500) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""FaviconUrl"" character varying(500) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""ShowBrandTextWithLogo"" boolean NOT NULL DEFAULT true;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""PrimaryColor"" character varying(20) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""AccentColor"" character varying(20) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""FontFamily"" character varying(80) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""CardRadiusPx"" integer NOT NULL DEFAULT 16;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""DefaultTheme"" character varying(20) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""CustomCss"" text NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HomeLayoutJson"" text NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroBadgeText"" character varying(120) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroTitlePrefix"" character varying(150) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroTitleHighlight"" character varying(150) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroSubtitle"" character varying(500) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroShowSearch"" boolean NOT NULL DEFAULT true;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroShowTags"" boolean NOT NULL DEFAULT true;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroShowStats"" boolean NOT NULL DEFAULT true;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroCtaText"" character varying(80) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""HeroCtaUrl"" character varying(300) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""FeaturedSectionTitle"" character varying(100) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""CategoriesSectionTitle"" character varying(100) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""LatestSectionTitle"" character varying(100) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""FooterDescription"" character varying(500) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""GithubUrl"" character varying(300) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""YoutubeUrl"" character varying(300) NULL;",
+                @"ALTER TABLE ""SiteSettings"" ADD COLUMN IF NOT EXISTS ""LinkedinUrl"" character varying(300) NULL;",
+                @"CREATE TABLE IF NOT EXISTS ""WebBlocks"" (
+                    ""Id"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    ""Title"" character varying(200) NOT NULL,
+                    ""Subtitle"" character varying(400) NULL,
+                    ""ContentMarkdown"" text NULL,
+                    ""ContentHtml"" text NULL,
+                    ""CustomHtmlCode"" text NULL,
+                    ""ButtonText"" character varying(80) NULL,
+                    ""ButtonUrl"" character varying(400) NULL,
+                    ""BlockType"" integer NOT NULL DEFAULT 0,
+                    ""StyleVariant"" integer NOT NULL DEFAULT 1,
+                    ""DisplayOrder"" integer NOT NULL DEFAULT 0,
+                    ""IsActive"" boolean NOT NULL DEFAULT true,
+                    ""CreatedAt"" timestamp without time zone NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS ""DataProtectionKeys"" (
+                    ""Id"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    ""FriendlyName"" character varying(200) NOT NULL,
+                    ""Xml"" text NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS ""MediaAssets"" (
+                    ""Id"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    ""FileName"" character varying(200) NOT NULL,
+                    ""ContentType"" character varying(120) NOT NULL,
+                    ""Data"" bytea NOT NULL,
+                    ""CreatedAt"" timestamp without time zone NOT NULL
+                );"
+            };
+
+            foreach (var sql in alterStatements)
+            {
+                context.Database.ExecuteSqlRaw(sql);
+            }
+        }
+
+        private static void MigrateFromSqliteIfPostgresEmpty(AppDbContext pgContext)
+        {
+            if (pgContext.Categories.Any() || pgContext.Users.Any())
+                return;
+
+            var candidatePaths = new[]
+            {
+                Path.Combine(Directory.GetCurrentDirectory(), "autotechhub.db"),
+                Path.Combine(AppContext.BaseDirectory, "autotechhub.db")
+            };
+
+            var sqlitePath = candidatePaths.FirstOrDefault(File.Exists);
+            if (string.IsNullOrEmpty(sqlitePath))
+                return;
+
+            var sqliteOptions = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite($"Data Source={sqlitePath}")
+                .Options;
+
+            using var sqliteContext = new AppDbContext(sqliteOptions);
+            EnsureSqliteSchemaUpgraded(sqliteContext);
+
+            if (!sqliteContext.Categories.Any() && !sqliteContext.Users.Any())
+                return;
+
+            using var tx = pgContext.Database.BeginTransaction();
+            try
+            {
+                var categories = sqliteContext.Categories.AsNoTracking().ToList();
+                var tags = sqliteContext.Tags.AsNoTracking().ToList();
+                var users = sqliteContext.Users.AsNoTracking().ToList();
+                var settings = sqliteContext.SiteSettings.AsNoTracking().ToList();
+                var articles = sqliteContext.Articles.AsNoTracking().ToList();
+                var articleTags = sqliteContext.ArticleTags.AsNoTracking().ToList();
+                var comments = sqliteContext.Comments.AsNoTracking().ToList();
+                var snippets = sqliteContext.CodeSnippets.AsNoTracking().ToList();
+                var ads = sqliteContext.Advertisements.AsNoTracking().ToList();
+                var products = sqliteContext.Products.AsNoTracking().ToList();
+                var inquiries = sqliteContext.ProductInquiries.AsNoTracking().ToList();
+                var webBlocks = sqliteContext.WebBlocks.AsNoTracking().ToList();
+                var mediaAssets = sqliteContext.MediaAssets.AsNoTracking().ToList();
+
+                if (categories.Any()) pgContext.Categories.AddRange(categories);
+                if (tags.Any()) pgContext.Tags.AddRange(tags);
+                if (users.Any()) pgContext.Users.AddRange(users);
+                if (settings.Any()) pgContext.SiteSettings.AddRange(settings);
+                pgContext.SaveChanges();
+
+                if (articles.Any()) pgContext.Articles.AddRange(articles);
+                pgContext.SaveChanges();
+
+                if (articleTags.Any()) pgContext.ArticleTags.AddRange(articleTags);
+                if (comments.Any()) pgContext.Comments.AddRange(comments);
+                if (snippets.Any()) pgContext.CodeSnippets.AddRange(snippets);
+                if (ads.Any()) pgContext.Advertisements.AddRange(ads);
+                if (products.Any()) pgContext.Products.AddRange(products);
+                if (webBlocks.Any()) pgContext.WebBlocks.AddRange(webBlocks);
+                if (mediaAssets.Any()) pgContext.MediaAssets.AddRange(mediaAssets);
+                pgContext.SaveChanges();
+
+                if (inquiries.Any()) pgContext.ProductInquiries.AddRange(inquiries);
+                pgContext.SaveChanges();
+
+                var identityTables = new[]
+                {
+                    "Categories", "Tags", "Users", "SiteSettings",
+                    "Articles", "Comments", "CodeSnippets", "Advertisements",
+                    "Products", "ProductInquiries", "WebBlocks", "MediaAssets"
+                };
+
+                foreach (var tbl in identityTables)
+                {
+                    pgContext.Database.ExecuteSqlRaw(
+                        $"SELECT setval(pg_get_serial_sequence('\"{tbl}\"', 'Id'), COALESCE((SELECT MAX(\"Id\") FROM \"{tbl}\"), 1), true);");
+                }
+
+                tx.Commit();
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        private static string GetSeedPassword(string envKey, string fallback)
+        {
+            var val = Environment.GetEnvironmentVariable(envKey);
+            return string.IsNullOrWhiteSpace(val) ? fallback : val.Trim();
+        }
+
+        private static void SeedUsers(AppDbContext context)
+        {
+            if (context.Users.Any())
+                return;
+
+            var adminPass = GetSeedPassword("SEED_ADMIN_PASSWORD", "AutoTech#Admin2026!");
+            var managerPass = GetSeedPassword("SEED_MANAGER_PASSWORD", "AutoTech#Mgr2026!");
+            var userPass = GetSeedPassword("SEED_USER_PASSWORD", "AutoTech#User2026!");
+
+            var users = new List<AppUser>
+            {
+                new AppUser
+                {
+                    Username = "admin",
+                    Email = "admin@autotechhub.vn",
+                    FullName = "Quản Trị Viên (Admin)",
+                    PasswordHash = PasswordHasherHelper.HashPassword(adminPass),
+                    Role = UserRole.Admin,
+                    Bio = "Quản trị viên hệ thống AutoTech Hub — Phê duyệt bài viết, phân quyền và quản lý nền tảng.",
+                    IsActive = true,
+                    MustChangePassword = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-30)
+                },
+                new AppUser
+                {
+                    Username = "manager",
+                    Email = "manager@autotechhub.vn",
+                    FullName = "Kỹ sư Quản lý (Manager)",
+                    PasswordHash = PasswordHasherHelper.HashPassword(managerPass),
+                    Role = UserRole.Manager,
+                    Bio = "Biên tập viên & Kỹ sư Tự động hóa — Có quyền viết và đăng bài trực tiếp.",
+                    IsActive = true,
+                    MustChangePassword = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-20)
+                },
+                new AppUser
+                {
+                    Username = "user",
+                    Email = "user@autotechhub.vn",
+                    FullName = "Thành viên Cộng đồng",
+                    PasswordHash = PasswordHasherHelper.HashPassword(userPass),
+                    Role = UserRole.User,
+                    Bio = "Thành viên đóng góp bài viết kỹ thuật chờ Admin phê duyệt.",
+                    IsActive = true,
+                    MustChangePassword = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-10)
+                }
+            };
+
+            context.Users.AddRange(users);
+            context.SaveChanges();
+        }
+
+        private static void RotateLegacyDemoPasswords(AppDbContext context)
+        {
+            var legacyMap = new Dictionary<string, (string OldPass, string NewPass, bool ForceChange)>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["admin"] = ("Admin@123", GetSeedPassword("SEED_ADMIN_PASSWORD", "AutoTech#Admin2026!"), false),
+                ["manager"] = ("Manager@123", GetSeedPassword("SEED_MANAGER_PASSWORD", "AutoTech#Mgr2026!"), true),
+                ["user"] = ("User@123", GetSeedPassword("SEED_USER_PASSWORD", "AutoTech#User2026!"), true)
+            };
+
+            var users = context.Users
+                .Where(u => u.Username == "admin" || u.Username == "manager" || u.Username == "user")
+                .ToList();
+
+            bool changed = false;
+            foreach (var u in users)
+            {
+                if (legacyMap.TryGetValue(u.Username, out var rule) &&
+                    PasswordHasherHelper.VerifyPassword(rule.OldPass, u.PasswordHash))
+                {
+                    u.PasswordHash = PasswordHasherHelper.HashPassword(rule.NewPass);
+                    u.MustChangePassword = rule.ForceChange;
+                    u.PasswordChangedAt = DateTime.UtcNow;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                context.SaveChanges();
+            }
+        }
+
+        private static void SeedSiteSettings(AppDbContext context)
+        {
+            var existing = context.SiteSettings.OrderBy(s => s.Id).FirstOrDefault();
+            if (existing != null)
+            {
+                bool updated = false;
+                if (string.IsNullOrWhiteSpace(existing.SiteName))
+                {
+                    existing.SiteName = "AutoTechHub";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.SiteTagline))
+                {
+                    existing.SiteTagline = "Chia Sẻ Kiến Thức Tự Động Hóa";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.LogoUrl))
+                {
+                    existing.LogoUrl = "/images/logo-default.svg";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.FaviconUrl))
+                {
+                    existing.FaviconUrl = "/images/favicon.svg";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.PrimaryColor))
+                {
+                    existing.PrimaryColor = "#0d6efd";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.AccentColor))
+                {
+                    existing.AccentColor = "#0dcaf0";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.FontFamily))
+                {
+                    existing.FontFamily = "Segoe UI";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.DefaultTheme))
+                {
+                    existing.DefaultTheme = "auto";
+                    updated = true;
+                }
+                if (string.IsNullOrWhiteSpace(existing.HeroBadgeText))
+                {
+                    existing.HeroBadgeText = "Kho Tri Thức & Giải Pháp Tự Động Hóa 4.0";
+                    existing.HeroTitlePrefix = "Chia Sẻ Kiến Thức";
+                    existing.HeroTitleHighlight = "Tự Động Hóa Thực Chiến";
+                    existing.HeroSubtitle = "Khám phá các hướng dẫn chuyên sâu về PLC/SCADA, RPA Web & Desktop, Hệ thống IoT, và Thị giác máy tính AI từ các kỹ sư tự động hóa.";
+                    existing.FeaturedSectionTitle = "Bài Viết Nổi Bật";
+                    existing.CategoriesSectionTitle = "Chuyên Mục Tự Động Hóa";
+                    existing.LatestSectionTitle = "Bài Viết Mới Cập Nhật";
+                    existing.FooterDescription = "Nền tảng chia sẻ kiến thức, kinh nghiệm thực chiến và thư viện mã nguồn về Tự động hóa công nghiệp (PLC/SCADA/IoT), RPA, DevOps và AI Vision.";
+                    existing.GithubUrl = "https://github.com";
+                    existing.YoutubeUrl = "https://youtube.com";
+                    existing.LinkedinUrl = "https://linkedin.com";
+                    updated = true;
+                }
+                if (updated) context.SaveChanges();
+                return;
+            }
+
+            context.SiteSettings.Add(new SiteSetting
+            {
+                EnableAdsModule = true,
+                EnableShopModule = true,
+                ShopNavTitle = "Sản phẩm",
+                ShopBannerTitle = "Thiết Bị, Kit Thực Hành & Giải Pháp Tự Động Hóa",
+                ShopBannerSubtitle = "Giới thiệu các bộ kit PLC/IoT, cảm biến công nghiệp và bộ mã nguồn tự động hóa sẵn sàng triển khai.",
+                ContactPhone = "0900 123 456",
+                ContactZalo = "https://zalo.me",
+                ContactEmail = "sales@autotechhub.vn",
+                SiteName = "AutoTechHub",
+                SiteTagline = "Chia Sẻ Kiến Thức Tự Động Hóa",
+                LogoUrl = "/images/logo-default.svg",
+                FaviconUrl = "/images/favicon.svg",
+                ShowBrandTextWithLogo = true,
+                UpdatedAt = DateTime.UtcNow
+            });
+            context.SaveChanges();
+        }
+
+        private static void SeedAds(AppDbContext context)
+        {
+            if (context.Advertisements.Any())
+                return;
+
+            context.Advertisements.AddRange(new List<Advertisement>
+            {
+                new Advertisement
+                {
+                    Title = "Khóa Học Thực Chiến PLC Siemens S7-1200 & SCADA WinCC",
+                    Description = "Làm chủ truyền thông công nghiệp Modbus TCP, S7 Protocol & kết nối C# SCADA từ con số 0.",
+                    Placement = AdPlacement.Sidebar,
+                    AdType = AdContentType.ImageBanner,
+                    ImageUrl = "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80",
+                    TargetUrl = "/Products",
+                    CtaText = "Xem chi tiết khóa học",
+                    OpenInNewTab = false,
+                    IsActive = true,
+                    DisplayOrder = 1,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Advertisement
+                {
+                    Title = "Bộ Giải Pháp Giám Sát Nhà Xưởng IoT Gateway ESP32 / RS485",
+                    Description = "Tích hợp sẵn MQTT, Dashboard Web theo dõi nhiệt độ - độ ẩm - điện năng 24/7.",
+                    Placement = AdPlacement.InArticle,
+                    AdType = AdContentType.ImageBanner,
+                    ImageUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80",
+                    TargetUrl = "/Products",
+                    CtaText = "Khám phá giải pháp",
+                    OpenInNewTab = false,
+                    IsActive = true,
+                    DisplayOrder = 1,
+                    CreatedAt = DateTime.UtcNow
+                }
+            });
+            context.SaveChanges();
+        }
+
+        private static void SeedProducts(AppDbContext context, IMarkdownService markdownService)
+        {
+            if (context.Products.Any())
+                return;
+
+            var p1Desc = @"### Bộ Kit Thực Hành Lập Trình PLC Siemens S7-1200 & HMI
+Bộ kit lắp ráp sẵn trên vali/khung nhôm định hình gọn nhẹ, phù hợp cho sinh viên và kỹ sư tự động hóa thực hành tại nhà hoặc đào tạo doanh nghiệp.
+
+- **CPU**: Siemens S7-1200 DC/DC/DC (hoặc tương thích mở rộng IO)
+- **Nguồn**: MeanWell 24VDC 2.5A công nghiệp
+- **Tích hợp sẵn**: Nút nhấn Start/Stop, Emergency Stop, Công tắc chuyển mạch, Đèn báo 3 pha, Biến trở giả lập Analog 0-10V
+- **Tặng kèm**: Bộ code mẫu C# S7.Net kết nối đọc/ghi thanh ghi và tài liệu hướng dẫn chi tiết";
+
+            var p2Desc = @"### Module Thu Thập Dữ Liệu IoT ESP32 + RS485 Modbus RTU
+Bo mạch tích hợp sẵn cách ly quang RS485, hỗ trợ đọc đồng thời đồng hồ điện năng, cảm biến nhiệt độ/độ ẩm SHT30/XY-MD02 và đẩy dữ liệu lên MQTT Broker hoặc Web API.
+
+- **Vi điều khiển**: ESP32-WROOM-32 Dual Core WiFi/BLE
+- **Chuẩn giao tiếp**: RS485 Modbus RTU, WiFi 2.4GHz, MQTT, HTTP REST
+- **Nguồn cấp**: 12V - 24VDC công nghiệp
+- **Firmware mẫu**: Cung cấp đầy đủ mã nguồn C++ Arduino/PlatformIO & ASP.NET Core Dashboard";
+
+            var p3Desc = @"### Bộ Source Code SCADA & Web Dashboard C# .NET + SignalR
+Giải pháp mã nguồn chuẩn doanh nghiệp giúp kỹ sư rút ngắn 80% thời gian phát triển phần mềm giám sát sản xuất (MES/SCADA mini).
+
+- **Công nghệ**: ASP.NET Core MVC + SignalR Realtime + SQLite/SQL Server
+- **Driver tích hợp**: Modbus TCP, Siemens S7.Net, Serial Port
+- **Tính năng**: Biểu đồ Realtime, Xuất báo cáo Excel/CSV, Cảnh báo ngưỡng qua Telegram/Email";
+
+            context.Products.AddRange(new List<Product>
+            {
+                new Product
+                {
+                    Name = "Vali Kit Thực Hành PLC Siemens S7-1200 & Mô Phỏng I/O",
+                    Slug = "vali-kit-thuc-hanh-plc-siemens-s7-1200",
+                    Sku = "ATH-PLC-001",
+                    CategoryName = "Thiết bị PLC & Tự động hóa",
+                    ShortDescription = "Bộ kit thực hành PLC công nghiệp tích hợp sẵn nguồn 24VDC, nút nhấn, đèn báo và biến trở Analog 0-10V.",
+                    DescriptionMarkdown = p1Desc,
+                    DescriptionHtml = markdownService.ToHtml(p1Desc),
+                    Price = 6850000m,
+                    OriginalPrice = 7500000m,
+                    Currency = "VNĐ",
+                    ImageUrl = "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80",
+                    StockStatus = ProductStockStatus.InStock,
+                    IsFeatured = true,
+                    IsActive = true,
+                    DisplayOrder = 1,
+                    CreatedAt = DateTime.UtcNow.AddDays(-5)
+                },
+                new Product
+                {
+                    Name = "Gateway IoT Công Nghiệp ESP32 RS485 Modbus RTU to MQTT",
+                    Slug = "gateway-iot-cong-nghiep-esp32-rs485-mqtt",
+                    Sku = "ATH-IOT-002",
+                    CategoryName = "Cảm biến & IoT",
+                    ShortDescription = "Bộ chuyển đổi thu thập dữ liệu cảm biến RS485 đẩy lên Cloud/MQTT Broker qua WiFi, nguồn 24VDC.",
+                    DescriptionMarkdown = p2Desc,
+                    DescriptionHtml = markdownService.ToHtml(p2Desc),
+                    Price = 790000m,
+                    OriginalPrice = 950000m,
+                    Currency = "VNĐ",
+                    ImageUrl = "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?auto=format&fit=crop&w=900&q=80",
+                    StockStatus = ProductStockStatus.InStock,
+                    IsFeatured = true,
+                    IsActive = true,
+                    DisplayOrder = 2,
+                    CreatedAt = DateTime.UtcNow.AddDays(-3)
+                },
+                new Product
+                {
+                    Name = "Bộ Source Code Web SCADA Realtime ASP.NET Core + SignalR",
+                    Slug = "source-code-web-scada-realtime-aspnet-core",
+                    Sku = "ATH-SW-003",
+                    CategoryName = "Phần mềm & Source Code",
+                    ShortDescription = "Mã nguồn đầy đủ hệ thống giám sát thiết bị công nghiệp thời gian thực, hỗ trợ Modbus TCP & S7.",
+                    DescriptionMarkdown = p3Desc,
+                    DescriptionHtml = markdownService.ToHtml(p3Desc),
+                    Price = 1500000m,
+                    OriginalPrice = null,
+                    Currency = "VNĐ",
+                    ImageUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",
+                    StockStatus = ProductStockStatus.InStock,
+                    IsFeatured = true,
+                    IsActive = true,
+                    DisplayOrder = 3,
+                    CreatedAt = DateTime.UtcNow.AddDays(-1)
+                }
+            });
+            context.SaveChanges();
+        }
+
+        private static void SeedBlogContent(AppDbContext context, IMarkdownService markdownService)
+        {
 
             // 1. Seed Categories
             var categories = new List<Category>

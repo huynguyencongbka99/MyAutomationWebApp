@@ -1,0 +1,137 @@
+@model AutoTechHub.Models.ViewModels.BrandingSettingsViewModel
+@{
+    ViewData["Title"] = "Quản Lý Logo & Thương Hiệu";
+}
+
+<div class="container my-4 my-md-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-palette-fill text-info me-2"></i>Logo &amp; Thương Hiệu Website
+            </h2>
+            <p class="text-muted small mb-0">Tải lên ảnh Logo mới, chỉnh Favicon và tùy biến tên thương hiệu hiển thị trên thanh điều hướng &amp; chân trang.</p>
+        </div>
+
+        <form asp-action="Branding" method="post" class="m-0">
+            <input type="hidden" name="resetDefaultLogo" value="true" />
+            <input type="hidden" asp-for="SiteName" />
+            <input type="hidden" asp-for="SiteTagline" />
+            <input type="hidden" asp-for="ShowBrandTextWithLogo" />
+            <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="return confirm('Khôi phục Logo và Favicon về mặc định?');">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Khôi phục Logo mặc định
+            </button>
+        </form>
+    </div>
+
+    <partial name="_AdminNav" />
+
+    <div class="row g-4">
+        <!-- Live Preview -->
+        <div class="col-lg-5">
+            <div class="card bg-body border rounded-4 p-4 shadow-sm h-100">
+                <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-eye me-2"></i>Xem Trước Hiển Thị</h5>
+
+                <div class="p-3 bg-surface-alt rounded-4 border mb-4">
+                    <div class="small text-muted mb-2">Thanh Header hiện tại:</div>
+                    <div class="d-inline-flex align-items-center gap-2 px-3 py-2 bg-body rounded-3 border shadow-sm">
+                        <img id="logoPreviewImg" src="@Model.LogoUrl" alt="Logo Preview" class="rounded-2" style="height: 36px; width: auto; max-width: 160px; object-fit: contain;" onerror="this.src='/images/logo-default.svg'" />
+                        <span id="brandTextPreview" class="brand-logo fs-5" style="display: @(Model.ShowBrandTextWithLogo ? "inline-flex" : "none");">@Model.SiteName</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-surface-alt rounded-4 border mb-3">
+                    <div class="small text-muted mb-2">Favicon trên tab trình duyệt:</div>
+                    <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-body rounded-3 border">
+                        <img id="faviconPreviewImg" src="@Model.FaviconUrl" alt="Favicon Preview" style="width: 22px; height: 22px; object-fit: contain;" onerror="this.src='/images/favicon.svg'" />
+                        <span class="small fw-semibold text-truncate" style="max-width: 220px;">Trang chủ - @Model.SiteName</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-info border-0 rounded-3 small mb-0 mt-auto">
+                    <i class="bi bi-lightbulb me-1"></i> Mẹo: Nên dùng ảnh <strong>PNG nền trong suốt</strong> hoặc <strong>SVG</strong> có tỷ lệ vuông (1:1) hoặc chữ nhật ngang để hiển thị sắc nét ở cả chế độ Sáng &amp; Tối.
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Form -->
+        <div class="col-lg-7">
+            <div class="card bg-body border rounded-4 p-4 shadow-sm">
+                <h5 class="fw-bold mb-3"><i class="bi bi-sliders me-2 text-info"></i>Cấu Hình Thương Hiệu &amp; Tải Ảnh</h5>
+
+                <form asp-action="Branding" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 small"></div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="SiteName" class="form-label fw-semibold small"></label>
+                            <input asp-for="SiteName" id="siteNameInput" class="form-control" required />
+                            <span asp-validation-for="SiteName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="SiteTagline" class="form-label fw-semibold small"></label>
+                            <input asp-for="SiteTagline" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch">
+                        <input asp-for="ShowBrandTextWithLogo" id="showBrandTextSwitch" class="form-check-input" type="checkbox" />
+                        <label asp-for="ShowBrandTextWithLogo" class="form-check-label fw-semibold small"></label>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <!-- Logo Upload + URL -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary">
+                            <i class="bi bi-image me-1"></i>Tải lên ảnh Logo mới (PNG, JPG, WEBP, SVG - tối đa 2MB)
+                        </label>
+                        <input type="file" name="logoFile" id="logoFileInput" accept=".png,.jpg,.jpeg,.webp,.svg,.ico" class="form-control mb-2" />
+                        <label asp-for="LogoUrl" class="form-label small text-muted"></label>
+                        <input asp-for="LogoUrl" id="logoUrlInput" class="form-control form-control-sm" placeholder="/images/logo-default.svg hoặc https://..." />
+                    </div>
+
+                    <!-- Favicon Upload + URL -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-primary">
+                            <i class="bi bi-app-indicator me-1"></i>Tải lên Favicon mới (ICO, PNG, SVG - tối đa 512KB)
+                        </label>
+                        <input type="file" name="faviconFile" id="faviconFileInput" accept=".ico,.png,.svg" class="form-control mb-2" />
+                        <label asp-for="FaviconUrl" class="form-label small text-muted"></label>
+                        <input asp-for="FaviconUrl" id="faviconUrlInput" class="form-control form-control-sm" placeholder="/images/favicon.svg" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm">
+                        <i class="bi bi-save me-1"></i> Lưu thay đổi Logo &amp; Thương hiệu
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('logoFileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('logoPreviewImg').src = URL.createObjectURL(file);
+            }
+        });
+        document.getElementById('faviconFileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('faviconPreviewImg').src = URL.createObjectURL(file);
+            }
+        });
+        document.getElementById('logoUrlInput').addEventListener('input', function (e) {
+            if (e.target.value) document.getElementById('logoPreviewImg').src = e.target.value;
+        });
+        document.getElementById('siteNameInput').addEventListener('input', function (e) {
+            document.getElementById('brandTextPreview').textContent = e.target.value || 'AutoTechHub';
+        });
+        document.getElementById('showBrandTextSwitch').addEventListener('change', function (e) {
+            document.getElementById('brandTextPreview').style.display = e.target.checked ? 'inline-flex' : 'none';
+        });
+    </script>
+}

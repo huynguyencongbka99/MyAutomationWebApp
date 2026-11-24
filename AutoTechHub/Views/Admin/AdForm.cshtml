@@ -1,0 +1,114 @@
+@model AutoTechHub.Models.Advertisement
+@{
+    bool isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Chỉnh Sửa Quảng Cáo" : "Thêm Quảng Cáo Mới";
+}
+
+<div class="container my-4 my-md-5" style="max-width: 820px;">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h3 class="fw-bold mb-0">
+                <i class="bi bi-megaphone text-success me-2"></i>@ViewData["Title"]
+            </h3>
+        </div>
+        <a asp-action="Ads" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại
+        </a>
+    </div>
+
+    <div class="card bg-body border rounded-4 p-4 shadow-sm">
+        <form asp-action="@(isEdit ? "EditAd" : "CreateAd")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" method="post">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 small"></div>
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label fw-semibold small"></label>
+                <input asp-for="Title" class="form-control" required placeholder="Ví dụ: Khóa học PLC S7-1200 thực chiến" />
+                <span asp-validation-for="Title" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label fw-semibold small"></label>
+                <textarea asp-for="Description" rows="2" class="form-control" placeholder="Mô tả ngắn gọn hấp dẫn người đọc..."></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Placement" class="form-label fw-semibold small"></label>
+                    <select asp-for="Placement" asp-items="Html.GetEnumSelectList<AdPlacement>()" class="form-select"></select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="AdType" class="form-label fw-semibold small"></label>
+                    <select asp-for="AdType" asp-items="Html.GetEnumSelectList<AdContentType>()" id="adTypeSelect" class="form-select" onchange="toggleAdFields()"></select>
+                </div>
+            </div>
+
+            <div id="bannerFields">
+                <div class="mb-3">
+                    <label asp-for="ImageUrl" class="form-label fw-semibold small"></label>
+                    <input asp-for="ImageUrl" class="form-control" placeholder="https://images.unsplash.com/..." />
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label asp-for="TargetUrl" class="form-label fw-semibold small"></label>
+                        <input asp-for="TargetUrl" class="form-control" placeholder="https://... hoặc /Products" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="CtaText" class="form-label fw-semibold small"></label>
+                        <input asp-for="CtaText" class="form-control" placeholder="Xem ngay" />
+                    </div>
+                </div>
+            </div>
+
+            <div id="htmlFields" class="mb-3" style="display:none;">
+                <label asp-for="HtmlContent" class="form-label fw-semibold small"></label>
+                <textarea asp-for="HtmlContent" rows="5" class="form-control font-monospace" placeholder="<div>Mã HTML hoặc Script AdSense...</div>"></textarea>
+                <div class="form-text small">Hỗ trợ nhúng mã HTML banner hoặc script quảng cáo từ đối tác.</div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="DisplayOrder" class="form-label fw-semibold small"></label>
+                    <input asp-for="DisplayOrder" type="number" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="StartDate" class="form-label fw-semibold small"></label>
+                    <input asp-for="StartDate" type="date" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="EndDate" class="form-label fw-semibold small"></label>
+                    <input asp-for="EndDate" type="date" class="form-control" />
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-4 mb-4">
+                <div class="form-check form-switch">
+                    <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                    <label asp-for="IsActive" class="form-check-label fw-semibold small"></label>
+                </div>
+                <div class="form-check form-switch">
+                    <input asp-for="OpenInNewTab" class="form-check-input" type="checkbox" />
+                    <label asp-for="OpenInNewTab" class="form-check-label fw-semibold small"></label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                <i class="bi bi-save me-1"></i> Lưu quảng cáo
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleAdFields() {
+            const val = document.getElementById('adTypeSelect').value;
+            const isHtml = val === '1' || val === 'HtmlCode';
+            document.getElementById('bannerFields').style.display = isHtml ? 'none' : 'block';
+            document.getElementById('htmlFields').style.display = isHtml ? 'block' : 'none';
+        }
+        document.addEventListener('DOMContentLoaded', toggleAdFields);
+    </script>
+}

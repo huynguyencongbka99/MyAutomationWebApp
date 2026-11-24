@@ -4,6 +4,21 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AutoTechHub.Models
 {
+    public enum ArticleApprovalStatus
+    {
+        [Display(Name = "Bản nháp")]
+        Draft = 0,
+
+        [Display(Name = "Chờ duyệt")]
+        Pending = 1,
+
+        [Display(Name = "Đã duyệt")]
+        Approved = 2,
+
+        [Display(Name = "Từ chối")]
+        Rejected = 3
+    }
+
     public class Article
     {
         public int Id { get; set; }
@@ -52,6 +67,22 @@ namespace AutoTechHub.Models
 
         [Display(Name = "Đã xuất bản")]
         public bool IsPublished { get; set; } = true;
+
+        [Display(Name = "Trạng thái duyệt")]
+        public ArticleApprovalStatus ApprovalStatus { get; set; } = ArticleApprovalStatus.Approved;
+
+        public int? AuthorUserId { get; set; }
+        public virtual AppUser AuthorUser { get; set; }
+
+        public int? ReviewedByUserId { get; set; }
+        public virtual AppUser ReviewedByUser { get; set; }
+
+        [Display(Name = "Ngày phê duyệt")]
+        public DateTime? ReviewedAt { get; set; }
+
+        [StringLength(500)]
+        [Display(Name = "Ghi chú phê duyệt")]
+        public string ReviewNote { get; set; }
 
         [Display(Name = "Ngày tạo")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

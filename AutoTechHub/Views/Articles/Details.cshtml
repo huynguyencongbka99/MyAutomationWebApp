@@ -1,9 +1,48 @@
 @model AutoTechHub.Models.ViewModels.ArticleDetailViewModel
 @{
     ViewData["Title"] = Model.Article.Title;
+    var currentUserId = User.GetUserId();
+    var isAdmin = User.IsInRole(nameof(UserRole.Admin));
+    var isOwner = currentUserId.HasValue && Model.Article.AuthorUserId == currentUserId.Value;
+    var canEdit = isAdmin || isOwner;
+    var isPublic = Model.Article.IsPublished && Model.Article.ApprovalStatus == ArticleApprovalStatus.Approved;
 }
 
 <div class="container my-4">
+    <!-- Approval / Draft Notice Banner for Author or Admin -->
+    @if (!isPublic)
+    {
+        <div class="alert @(Model.Article.ApprovalStatus == ArticleApprovalStatus.Rejected ? "alert-danger" : "alert-warning") rounded-4 shadow-sm border-0 mb-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div>
+                <div class="fw-bold">
+                    <i class="bi bi-shield-exclamation me-1"></i>
+                    @if (Model.Article.ApprovalStatus == ArticleApprovalStatus.Pending)
+                    {
+                        <span>Chế độ xem trước: Bài viết đang CHỜ ADMIN PHÊ DUYỆT (chưa hiển thị công khai)</span>
+                    }
+                    else if (Model.Article.ApprovalStatus == ArticleApprovalStatus.Rejected)
+                    {
+                        <span>Bài viết đã bị TỪ CHỐI: @Model.Article.ReviewNote</span>
+                    }
+                    else
+                    {
+                        <span>Chế độ xem trước: Bài viết đang là BẢN NHÁP / ẨN</span>
+                    }
+                </div>
+            </div>
+            @if (isAdmin && Model.Article.ApprovalStatus == ArticleApprovalStatus.Pending)
+            {
+                <div class="d-flex gap-2 flex-shrink-0">
+                    <form asp-controller="Admin" asp-action="ApproveArticle" asp-route-id="@Model.Article.Id" method="post">
+                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Phê duyệt &amp; Đăng ngay
+                        </button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-3 small">
@@ -14,7 +53,7 @@
                     @Model.Article.Category.Name
                 </a>
             </li>
-            <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">@Model.Article.Title</li>
+            <li class="breadcrumb-item active text-truncate" style="max-width: 240px;" aria-current="page">@Model.Article.Title</li>
         </ol>
     </nav>
 
@@ -36,34 +75,37 @@
             @Model.Article.Title
         </h1>
 
-        <p class="lead text-muted mb-4" style="font-size: 1.15rem;">
+        <p class="lead text-muted mb-4" style="font-size: 1.1rem;">
             @Model.Article.Summary
         </p>
 
         <!-- Meta Info Bar -->
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-3 border-top">
             <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 44px; height: 44px; font-size: 1.1rem;">
-                    @Model.Article.AuthorName.Substring(0, 1)
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.1rem;">
+                    @(string.IsNullOrEmpty(Model.Article.AuthorName) ? "A" : Model.Article.AuthorName.Substring(0, 1))
                 </div>
                 <div>
                     <div class="fw-bold">@Model.Article.AuthorName</div>
                     <div class="small text-muted">
-                        <span><i class="bi bi-calendar3 me-1"></i>@Model.Article.CreatedAt.ToString("dd MMMM, yyyy")</span>
+                        <span><i class="bi bi-calendar3 me-1"></i>@Model.Article.CreatedAt.ToString("dd/MM/yyyy")</span>
                         <span class="mx-1">•</span>
                         <span><i class="bi bi-clock me-1"></i>@Model.Article.ReadingTimeMinutes phút đọc</span>
                     </div>
                 </div>
             </div>
 
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-muted small"><i class="bi bi-eye me-1"></i>@Model.Article.ViewCount lượt xem</span>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted small me-1"><i class="bi bi-eye me-1"></i>@Model.Article.ViewCount lượt xem</span>
                 <button id="btn-like-article" data-article-id="@Model.Article.Id" class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-sm" type="button">
                     <i class="bi bi-heart me-1"></i> <span id="like-count-display">@Model.Article.LikeCount</span> Thích
                 </button>
-                <a asp-action="Edit" asp-route-id="@Model.Article.Id" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chỉnh sửa bài viết">
-                    <i class="bi bi-pencil me-1"></i> Sửa
-                </a>
+                @if (canEdit)
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Article.Id" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chỉnh sửa bài viết">
+                        <i class="bi bi-pencil me-1"></i> Sửa
+                    </a>
+                }
             </div>
         </div>
     </div>
@@ -71,18 +113,34 @@
     <!-- Featured Image Banner -->
     @if (!string.IsNullOrWhiteSpace(Model.Article.ThumbnailUrl))
     {
-        <div class="mb-5 rounded-4 overflow-hidden shadow-sm" style="max-height: 480px;">
+        <div class="mb-4 mb-md-5 rounded-4 overflow-hidden shadow-sm" style="max-height: 480px;">
             <img src="@Model.Article.ThumbnailUrl" alt="@Model.Article.Title" class="w-100 h-100 object-fit-cover" onerror="this.style.display='none'" />
         </div>
     }
 
+    <!-- Mobile Collapsible Table of Contents -->
+    <div id="article-toc-mobile-wrapper" class="d-lg-none mb-4">
+        <button class="btn btn-outline-primary w-100 rounded-4 d-flex justify-content-between align-items-center py-2.5 px-3 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#mobileTocCollapse" aria-expanded="false">
+            <span><i class="bi bi-list-nested me-2"></i>Mục lục bài viết</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse mt-2" id="mobileTocCollapse">
+            <div class="toc-box shadow-sm">
+                <div id="article-toc-list-mobile" class="d-flex flex-column gap-1"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Article Body & Sticky Sidebar -->
-    <div class="row g-5">
+    <div class="row g-4 g-lg-5">
         <!-- Content Body (Left) -->
         <div class="col-lg-8">
             <div id="article-content-body" class="article-content">
                 @Html.Raw(Model.Article.ContentHtml)
             </div>
+
+            <!-- In-Article Ad Placement -->
+            @await Component.InvokeAsync("AdSlot", new { placement = AdPlacement.InArticle })
 
             <!-- Tags List -->
             @if (Model.Article.ArticleTags.Any())
@@ -101,17 +159,17 @@
             }
 
             <!-- Social Share & Engagement Bar -->
-            <div class="card bg-body border rounded-4 p-3.5 my-4 shadow-sm">
+            <div class="card bg-body border rounded-4 p-3 p-md-4 my-4 shadow-sm">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="fw-bold small">Bạn thấy bài viết này hữu ích?</span>
-                        <button id="btn-like-bottom" onclick="document.getElementById('btn-like-article').click()" class="btn btn-danger btn-sm rounded-pill px-3">
+                        <span class="fw-bold small">Bạn thấy bài viết hữu ích?</span>
+                        <button id="btn-like-bottom" onclick="document.getElementById('btn-like-article').click()" class="btn btn-danger btn-sm rounded-pill px-3" type="button">
                             <i class="bi bi-heart-fill me-1"></i> Thả tim
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span class="small text-muted">Chia sẻ:</span>
-                        <button class="btn btn-outline-secondary btn-sm rounded-circle" onclick="navigator.clipboard.writeText(window.location.href); alert('Đã sao chép link bài viết!');" title="Sao chép link">
+                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle" onclick="navigator.clipboard.writeText(window.location.href); alert('Đã sao chép link bài viết!');" title="Sao chép link">
                             <i class="bi bi-link-45deg"></i>
                         </button>
                         <a href="https://www.facebook.com/sharer/sharer.php?u=@Context.Request.Scheme://@Context.Request.Host@Context.Request.Path" target="_blank" class="btn btn-outline-primary btn-sm rounded-circle" title="Chia sẻ Facebook">
@@ -125,15 +183,17 @@
             </div>
 
             <!-- Author Card -->
-            <div class="card bg-body border rounded-4 p-4 my-4 shadow-sm">
+            <div class="card bg-body border rounded-4 p-3 p-md-4 my-4 shadow-sm">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-gradient text-white d-flex align-items-center justify-content-center fw-bold fs-3 bg-primary" style="width: 60px; height: 60px; min-width: 60px;">
-                        @Model.Article.AuthorName.Substring(0, 1)
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-3 flex-shrink-0" style="width: 56px; height: 56px;">
+                        @(string.IsNullOrEmpty(Model.Article.AuthorName) ? "A" : Model.Article.AuthorName.Substring(0, 1))
                     </div>
                     <div>
                         <h6 class="fw-bold mb-1">@Model.Article.AuthorName</h6>
                         <p class="small text-muted mb-0">
-                            Tác giả chuyên sâu về các giải pháp Tự động hóa công nghiệp, IoT và công nghệ phần mềm.
+                            @(string.IsNullOrWhiteSpace(Model.Article.AuthorUser?.Bio)
+                                ? "Tác giả chia sẻ giải pháp Tự động hóa công nghiệp, IoT và công nghệ phần mềm."
+                                : Model.Article.AuthorUser.Bio)
                         </p>
                     </div>
                 </div>
@@ -146,16 +206,16 @@
                     {
                         <a asp-action="Details" asp-route-slug="@Model.PreviousArticle.Slug" class="card bg-body border rounded-4 p-3 text-decoration-none h-100 hover-primary shadow-sm">
                             <div class="small text-muted mb-1"><i class="bi bi-arrow-left me-1"></i>Bài trước</div>
-                            <div class="fw-bold text-truncate-2 fs-7 text-reset">@Model.PreviousArticle.Title</div>
+                            <div class="fw-bold fs-7 text-reset">@Model.PreviousArticle.Title</div>
                         </a>
                     }
                 </div>
                 <div class="col-md-6">
                     @if (Model.NextArticle != null)
                     {
-                        <a asp-action="Details" asp-route-slug="@Model.NextArticle.Slug" class="card bg-body border rounded-4 p-3 text-decoration-none h-100 text-end hover-primary shadow-sm">
+                        <a asp-action="Details" asp-route-slug="@Model.NextArticle.Slug" class="card bg-body border rounded-4 p-3 text-decoration-none h-100 text-md-end hover-primary shadow-sm">
                             <div class="small text-muted mb-1">Bài tiếp theo <i class="bi bi-arrow-right ms-1"></i></div>
-                            <div class="fw-bold text-truncate-2 fs-7 text-reset">@Model.NextArticle.Title</div>
+                            <div class="fw-bold fs-7 text-reset">@Model.NextArticle.Title</div>
                         </a>
                     }
                 </div>
@@ -164,11 +224,11 @@
             <!-- Comments Section -->
             <div class="my-5" id="comments">
                 <h4 class="fw-bold mb-4">
-                    <i class="bi bi-chat-left-text-fill text-primary me-2"></i>Bình Luận & Thảo Luận (@Model.Article.Comments.Count)
+                    <i class="bi bi-chat-left-text-fill text-primary me-2"></i>Bình Luận &amp; Thảo Luận (@Model.Article.Comments.Count)
                 </h4>
 
                 <!-- Add Comment Form -->
-                <div class="card bg-body border rounded-4 p-4 mb-4 shadow-sm">
+                <div class="card bg-body border rounded-4 p-3 p-md-4 mb-4 shadow-sm">
                     <h6 class="fw-bold mb-3">Để lại bình luận hoặc câu hỏi của bạn</h6>
                     <form asp-action="AddComment" method="post">
                         <input type="hidden" name="articleId" value="@Model.Article.Id" />
@@ -177,7 +237,7 @@
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Họ và tên *</label>
-                                <input type="text" name="AuthorName" class="form-control" required placeholder="Nguyễn Văn A" />
+                                <input type="text" name="AuthorName" value="@(User.Identity.IsAuthenticated ? User.GetFullName() : "")" class="form-control" required placeholder="Nguyễn Văn A" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Email (sẽ được ẩn)</label>
@@ -209,11 +269,11 @@
                     <div class="d-flex flex-column gap-3">
                         @foreach (var comment in Model.Article.Comments)
                         {
-                            <div class="card bg-body border rounded-4 p-3.5 shadow-sm">
+                            <div class="card bg-body border rounded-4 p-3 shadow-sm">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="rounded-circle bg-secondary text-white small fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                            @comment.AuthorName.Substring(0, 1)
+                                            @(string.IsNullOrEmpty(comment.AuthorName) ? "U" : comment.AuthorName.Substring(0, 1))
                                         </div>
                                         <span class="fw-bold">@comment.AuthorName</span>
                                     </div>
@@ -227,19 +287,20 @@
             </div>
         </div>
 
-        <!-- Sticky Table of Contents & Related Sidebar (Right) -->
+        <!-- Sticky Table of Contents & Sidebar (Right) -->
         <div class="col-lg-4">
-            <!-- 1. Table of Contents -->
-            <div id="article-toc-wrapper" class="toc-box mb-4 shadow-sm">
+            <!-- 1. Desktop Sticky Table of Contents -->
+            <div id="article-toc-wrapper" class="toc-box mb-4 shadow-sm d-none d-lg-block">
                 <h6 class="fw-bold mb-3 text-uppercase fs-7 text-primary">
                     <i class="bi bi-list-nested me-2"></i>Mục lục bài viết
                 </h6>
-                <div id="article-toc-list" class="d-flex flex-column gap-1">
-                    <!-- Javascript will auto-generate links here -->
-                </div>
+                <div id="article-toc-list" class="d-flex flex-column gap-1"></div>
             </div>
 
-            <!-- 2. Related Articles -->
+            <!-- 2. Sidebar Ad Slot -->
+            @await Component.InvokeAsync("AdSlot", new { placement = AdPlacement.Sidebar })
+
+            <!-- 3. Related Articles -->
             @if (Model.RelatedArticles.Any())
             {
                 <div class="card bg-body border rounded-4 p-4 shadow-sm mb-4">
@@ -267,13 +328,13 @@
                 </div>
             }
 
-            <!-- 3. Write article CTA -->
+            <!-- 4. Write article CTA -->
             <div class="card bg-surface-alt border rounded-4 p-4 shadow-sm text-center">
                 <i class="bi bi-journal-plus text-primary display-6 mb-2"></i>
                 <h6 class="fw-bold mb-1">Bạn có bài viết hữu ích?</h6>
                 <p class="small text-muted mb-3">Cùng chia sẻ kiến thức tự động hóa tới cộng đồng kỹ sư Việt Nam.</p>
                 <a asp-action="Create" class="btn btn-outline-primary btn-sm rounded-pill w-100">
-                    <i class="bi bi-pencil-square me-1"></i> Đăng bài ngay
+                    <i class="bi bi-pencil-square me-1"></i> Viết bài ngay
                 </a>
             </div>
         </div>

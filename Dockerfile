@@ -11,6 +11,6 @@ RUN dotnet publish "AutoTechHub.csproj" -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:5.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-ENV ASPNETCORE_URLS=http://+:80
+ENV DOTNET_RUNNING_IN_CONTAINER=true
 EXPOSE 80
-ENTRYPOINT ["dotnet", "AutoTechHub.dll"]
+ENTRYPOINT ["sh", "-c", "ASPNETCORE_URLS=http://0.0.0.0:${PORT:-80} exec dotnet AutoTechHub.dll"]

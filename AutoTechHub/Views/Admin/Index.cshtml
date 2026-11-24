@@ -1,81 +1,210 @@
 @model AutoTechHub.Models.ViewModels.AdminDashboardViewModel
 @{
-    ViewData["Title"] = "Quản Trị & Thống Kê Website";
+    ViewData["Title"] = Model.IsAdmin ? "Quản Trị Hệ Thống" : "Quản Lý Bài Viết";
 }
 
-<div class="container my-5">
+<div class="container my-4 my-md-5">
     <!-- Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
         <div>
-            <h2 class="fw-bold mb-0">
-                <i class="bi bi-speedometer2 text-primary me-2"></i>Bảng Điều Khiển Quản Trị
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-speedometer2 text-primary me-2"></i>@(Model.IsAdmin ? "Bảng Điều Khiển Quản Trị (Admin)" : "Quản Lý Nội Dung (Quản Lý)")
             </h2>
-            <p class="text-muted small mb-0">Theo dõi số liệu tương tác và quản lý danh sách bài viết trên hệ thống AutoTech Hub.</p>
+            <p class="text-muted small mb-0">
+                @(Model.IsAdmin
+                    ? "Phê duyệt bài viết, phân quyền tài khoản, quản lý quảng cáo và tính năng bán hàng."
+                    : "Viết, xuất bản trực tiếp và quản lý các bài viết chuyên môn của bạn.")
+            </p>
         </div>
 
-        <a asp-controller="Articles" asp-action="Create" class="btn btn-primary rounded-pill px-3 shadow-sm">
-            <i class="bi bi-pencil-square me-1"></i> Đăng bài viết mới
+        <a asp-controller="Articles" asp-action="Create" class="btn btn-primary rounded-pill px-4 shadow-sm">
+            <i class="bi bi-pencil-square me-1"></i> Viết &amp; Đăng bài mới
         </a>
     </div>
+
+    <partial name="_AdminNav" />
+
+    <!-- Module Quick Controls (Admin Only) -->
+    @if (Model.IsAdmin)
+    {
+        <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h6 class="fw-bold mb-1 text-primary"><i class="bi bi-toggles me-2"></i>Điều Khiển Phân Mục Mở Rộng (Bật / Tắt Khi Cần)</h6>
+                    <p class="small text-muted mb-0">Chủ động bật hoặc đưa về chế độ chờ (ẩn khỏi web) cho phân mục Quảng cáo và Bán hàng chỉ bằng 1 chạm.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="form-check form-switch bg-surface-alt px-3 py-2 rounded-pill border d-flex align-items-center gap-2 m-0">
+                        <input class="form-check-input ms-0" type="checkbox" role="switch" id="globalAdsSwitch" checked="@Model.SiteSetting.EnableAdsModule" onchange="toggleSiteModule('ToggleAdsModule', this, 'globalAdsBadge')">
+                        <label class="form-check-label small fw-bold" for="globalAdsSwitch">
+                            Quảng cáo: <span id="globalAdsBadge" class="badge @(Model.SiteSetting.EnableAdsModule ? "bg-success" : "bg-secondary")">@(Model.SiteSetting.EnableAdsModule ? "Đang bật" : "Chờ / Tắt")</span>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch bg-surface-alt px-3 py-2 rounded-pill border d-flex align-items-center gap-2 m-0">
+                        <input class="form-check-input ms-0" type="checkbox" role="switch" id="globalShopSwitch" checked="@Model.SiteSetting.EnableShopModule" onchange="toggleSiteModule('ToggleShopModule', this, 'globalShopBadge')">
+                        <label class="form-check-label small fw-bold" for="globalShopSwitch">
+                            Bán hàng: <span id="globalShopBadge" class="badge @(Model.SiteSetting.EnableShopModule ? "bg-danger" : "bg-secondary")">@(Model.SiteSetting.EnableShopModule ? "Đang bật" : "Chế độ chờ")</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 
     <!-- Metrics Cards -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-4 col-xl-2">
-            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
                 <div class="fs-4 fw-bold text-primary">@Model.TotalArticles</div>
                 <div class="small text-muted fw-semibold">Tổng bài viết</div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
-            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
+            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
                 <div class="fs-4 fw-bold text-success">@Model.PublishedArticles</div>
                 <div class="small text-muted fw-semibold">Đã xuất bản</div>
             </div>
         </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
-                <div class="fs-4 fw-bold text-info">@Model.TotalViews.ToString("N0")</div>
-                <div class="small text-muted fw-semibold">Lượt xem</div>
+        @if (Model.IsAdmin)
+        {
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-warning">@Model.PendingApprovalCount</div>
+                    <div class="small text-muted fw-semibold">Chờ phê duyệt</div>
+                </div>
             </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
-                <div class="fs-4 fw-bold text-danger">@Model.TotalLikes</div>
-                <div class="small text-muted fw-semibold">Lượt thích</div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-info">@Model.TotalUsers</div>
+                    <div class="small text-muted fw-semibold">Thành viên</div>
+                </div>
             </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
-                <div class="fs-4 fw-bold text-warning">@Model.TotalComments</div>
-                <div class="small text-muted fw-semibold">Bình luận</div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-success">@Model.ActiveAdsCount</div>
+                    <div class="small text-muted fw-semibold">QC đang chạy</div>
+                </div>
             </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card bg-body border rounded-4 p-3 shadow-sm text-center">
-                <div class="fs-4 fw-bold text-secondary">@Model.TotalSnippets</div>
-                <div class="small text-muted fw-semibold">Snippets</div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-danger">@Model.ActiveProductsCount <span class="fs-6 text-muted">(@Model.PendingInquiriesCount đơn)</span></div>
+                    <div class="small text-muted fw-semibold">Mặt hàng</div>
+                </div>
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-info">@Model.TotalViews.ToString("N0")</div>
+                    <div class="small text-muted fw-semibold">Lượt xem</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-danger">@Model.TotalLikes</div>
+                    <div class="small text-muted fw-semibold">Lượt thích</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-warning">@Model.TotalComments</div>
+                    <div class="small text-muted fw-semibold">Bình luận</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="card bg-body border rounded-4 p-3 shadow-sm text-center h-100">
+                    <div class="fs-4 fw-bold text-secondary">@Model.TotalSnippets</div>
+                    <div class="small text-muted fw-semibold">Snippets</div>
+                </div>
+            </div>
+        }
     </div>
 
-    <!-- Articles Management Table -->
-    <div class="card bg-body border rounded-4 p-4 shadow-sm mb-5">
+    <!-- Pending Articles Approval Queue (Admin Only) -->
+    @if (Model.IsAdmin)
+    {
+        <div class="card bg-body border border-warning rounded-4 p-3 p-md-4 shadow-sm mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-warning">
+                    <i class="bi bi-hourglass-split me-2"></i>Bài Viết Chờ Admin Phê Duyệt (@Model.PendingApprovalCount)
+                </h5>
+            </div>
+
+            @if (!Model.PendingArticles.Any())
+            {
+                <div class="text-center py-3 text-muted small bg-surface-alt rounded-3">
+                    <i class="bi bi-check2-circle text-success fs-4 d-block mb-1"></i>
+                    Không có bài viết nào đang chờ duyệt.
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var item in Model.PendingArticles)
+                    {
+                        <div class="p-3 bg-surface-alt rounded-4 border">
+                            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                                <div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                        <span class="badge bg-warning text-dark rounded-pill">Chờ duyệt</span>
+                                        <span class="badge bg-@item.Category.BadgeColor-subtle text-@item.Category.BadgeColor">@item.Category.Name</span>
+                                        <span class="small text-muted">
+                                            <i class="bi bi-person me-1"></i>@item.AuthorName
+                                            @if (item.AuthorUser != null)
+                                            {
+                                                <span>(@@@item.AuthorUser.Username)</span>
+                                            }
+                                            • @item.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                        </span>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">
+                                        <a asp-controller="Articles" asp-action="Details" asp-route-slug="@item.Slug" class="text-decoration-none text-reset hover-primary">
+                                            @item.Title
+                                        </a>
+                                    </h6>
+                                    <p class="small text-muted mb-0">@item.Summary</p>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+                                    <a asp-controller="Articles" asp-action="Details" asp-route-slug="@item.Slug" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                        <i class="bi bi-eye me-1"></i> Xem trước
+                                    </a>
+                                    <form asp-action="ApproveArticle" asp-route-id="@item.Id" method="post" class="m-0">
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold">
+                                            <i class="bi bi-check-lg me-1"></i> Duyệt &amp; Đăng
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="openRejectModal(@item.Id, '@item.Title.Replace("'", "\\'")')">
+                                        <i class="bi bi-x-lg me-1"></i> Từ chối
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Articles Management List -->
+    <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold mb-0">
-                <i class="bi bi-table me-2 text-primary"></i>Danh Sách Bài Viết Gần Đây
+                <i class="bi bi-table me-2 text-primary"></i>@(Model.IsAdmin ? "Danh Sách Bài Viết Hệ Thống" : "Danh Sách Bài Viết Của Bạn")
             </h5>
         </div>
 
-        <div class="table-responsive">
+        <!-- Desktop Table -->
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover align-middle">
-                <thead class="table-light">
+                <thead>
                     <tr>
                         <th>Tiêu đề</th>
                         <th>Chuyên mục</th>
                         <th>Tác giả</th>
-                        <th>Lượt xem</th>
-                        <th>Lượt thích</th>
-                        <th>Trạng thái</th>
+                        <th>Trạng thái duyệt</th>
+                        <th>Hiển thị</th>
                         <th>Ngày tạo</th>
                         <th class="text-end">Hành động</th>
                     </tr>
@@ -85,7 +214,7 @@
                     {
                         <tr>
                             <td>
-                                <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="fw-bold text-decoration-none text-reset hover-primary d-block text-truncate" style="max-width: 320px;">
+                                <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="fw-bold text-decoration-none text-reset hover-primary d-block text-truncate" style="max-width: 280px;">
                                     @article.Title
                                 </a>
                                 @if (article.IsFeatured)
@@ -99,8 +228,24 @@
                                 </span>
                             </td>
                             <td class="small">@article.AuthorName</td>
-                            <td class="small fw-semibold">@article.ViewCount</td>
-                            <td class="small fw-semibold text-danger">@article.LikeCount</td>
+                            <td>
+                                @if (article.ApprovalStatus == ArticleApprovalStatus.Approved)
+                                {
+                                    <span class="badge bg-success-subtle text-success">Đã duyệt</span>
+                                }
+                                else if (article.ApprovalStatus == ArticleApprovalStatus.Pending)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning">Chờ duyệt</span>
+                                }
+                                else if (article.ApprovalStatus == ArticleApprovalStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger">Từ chối</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary">Bản nháp</span>
+                                }
+                            </td>
                             <td>
                                 <div class="form-check form-switch m-0">
                                     <input class="form-check-input" type="checkbox" role="switch" id="pubSwitch_@article.Id" checked="@article.IsPublished" onchange="togglePublish(@article.Id, this)">
@@ -130,12 +275,42 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Cards -->
+        <div class="d-md-none d-flex flex-column gap-3">
+            @foreach (var article in Model.RecentArticles)
+            {
+                <div class="p-3 bg-surface-alt rounded-4 border">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="badge bg-@article.Category.BadgeColor-subtle text-@article.Category.BadgeColor small">@article.Category.Name</span>
+                        <span class="small text-muted">@article.CreatedAt.ToString("dd/MM/yyyy")</span>
+                    </div>
+                    <h6 class="fw-bold mb-1">
+                        <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="text-decoration-none text-reset">@article.Title</a>
+                    </h6>
+                    <div class="small text-muted mb-2">Tác giả: @article.AuthorName</div>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="pubSwitchM_@article.Id" checked="@article.IsPublished" onchange="togglePublish(@article.Id, this)">
+                            <label class="form-check-label small" for="pubSwitchM_@article.Id">@(article.IsPublished ? "Hiện" : "Ẩn")</label>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <a asp-controller="Articles" asp-action="Edit" asp-route-id="@article.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a asp-controller="Articles" asp-action="Details" asp-route-slug="@article.Slug" class="btn btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            <form asp-controller="Admin" asp-action="DeleteArticle" asp-route-id="@article.Id" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa bài viết này?');" style="display:inline;">
+                                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
     </div>
 
     <!-- Recent Comments -->
     @if (Model.RecentComments.Any())
     {
-        <div class="card bg-body border rounded-4 p-4 shadow-sm">
+        <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm">
             <h5 class="fw-bold mb-3">
                 <i class="bi bi-chat-quote text-primary me-2"></i>Bình Luận Mới Nhất
             </h5>
@@ -143,7 +318,7 @@
                 @foreach (var c in Model.RecentComments)
                 {
                     <div class="list-group-item px-0 py-3 bg-transparent border-bottom">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-1">
                             <span class="fw-bold">@c.AuthorName <span class="text-muted fw-normal small">trên bài:</span> <a asp-controller="Articles" asp-action="Details" asp-route-slug="@c.Article.Slug">@c.Article.Title</a></span>
                             <span class="small text-muted">@c.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                         </div>
@@ -153,6 +328,30 @@
             </div>
         </div>
     }
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectArticleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form id="rejectArticleForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-x-circle me-2"></i>Từ chối bài viết</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">Bài viết: <strong id="rejectArticleTitle"></strong></p>
+                    <label class="form-label small fw-semibold">Lý do từ chối / Ghi chú góp ý cho tác giả:</label>
+                    <textarea name="note" rows="3" class="form-control" required placeholder="Ví dụ: Vui lòng bổ sung sơ đồ đấu nối hoặc đoạn code hoàn chỉnh..."></textarea>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">Xác nhận từ chối</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -169,11 +368,47 @@
                     if (label) {
                         label.textContent = data.isPublished ? "Hiện" : "Ẩn";
                     }
+                } else {
+                    checkbox.checked = !checkbox.checked;
                 }
             } catch (err) {
                 console.error("Lỗi toggle publish: ", err);
                 checkbox.checked = !checkbox.checked;
             }
+        }
+
+        async function toggleSiteModule(actionName, checkbox, badgeId) {
+            try {
+                const response = await fetch(`/Admin/${actionName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const badge = document.getElementById(badgeId);
+                    if (badge) {
+                        if (actionName === 'ToggleAdsModule') {
+                            badge.textContent = data.enabled ? 'Đang bật' : 'Chờ / Tắt';
+                            badge.className = 'badge ' + (data.enabled ? 'bg-success' : 'bg-secondary');
+                        } else {
+                            badge.textContent = data.enabled ? 'Đang bật' : 'Chế độ chờ';
+                            badge.className = 'badge ' + (data.enabled ? 'bg-danger' : 'bg-secondary');
+                        }
+                    }
+                } else {
+                    checkbox.checked = !checkbox.checked;
+                }
+            } catch (err) {
+                console.error(err);
+                checkbox.checked = !checkbox.checked;
+            }
+        }
+
+        function openRejectModal(articleId, title) {
+            document.getElementById('rejectArticleTitle').textContent = title;
+            document.getElementById('rejectArticleForm').action = `/Admin/RejectArticle/${articleId}`;
+            const modal = new bootstrap.Modal(document.getElementById('rejectArticleModal'));
+            modal.show();
         }
     </script>
 }

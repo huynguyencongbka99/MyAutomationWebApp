@@ -1,0 +1,180 @@
+@model AutoTechHub.Models.ViewModels.ProductListViewModel
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.SiteSetting?.ShopNavTitle) ? "Sản Phẩm & Giải Pháp" : Model.SiteSetting.ShopNavTitle;
+    var isAdmin = User.IsInRole(nameof(UserRole.Admin));
+}
+
+<div class="container my-4 my-md-5">
+    @if (Model.SiteSetting != null && !Model.SiteSetting.EnableShopModule && isAdmin)
+    {
+        <div class="alert alert-warning rounded-4 border-0 shadow-sm mb-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+            <div class="small">
+                <i class="bi bi-eye-slash-fill me-1"></i>
+                <strong>Chế độ chờ (Standby):</strong> Phân mục Bán hàng hiện đang TẮT với khách truy cập. Chỉ Admin mới nhìn thấy trang xem trước này.
+            </div>
+            <a asp-controller="Admin" asp-action="Products" class="btn btn-sm btn-dark rounded-pill px-3 flex-shrink-0">
+                <i class="bi bi-sliders me-1"></i> Mở cài đặt Bán hàng
+            </a>
+        </div>
+    }
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <span class="badge bg-danger-subtle text-danger px-3 py-1.5 rounded-pill fw-semibold mb-2">
+                <i class="bi bi-bag-check-fill me-1"></i>Giới Thiệu &amp; Cung Cấp Thiết Bị
+            </span>
+            <h2 class="fw-bold mb-1">
+                @(string.IsNullOrWhiteSpace(Model.SiteSetting?.ShopBannerTitle) ? "Sản Phẩm & Giải Pháp Tự Động Hóa" : Model.SiteSetting.ShopBannerTitle)
+            </h2>
+            <p class="text-muted small mb-0">
+                @Model.SiteSetting?.ShopBannerSubtitle
+            </p>
+        </div>
+
+        @if (isAdmin)
+        {
+            <a asp-controller="Admin" asp-action="CreateProduct" class="btn btn-danger rounded-pill px-3 btn-sm shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Thêm mặt hàng
+            </a>
+        }
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="card bg-body border rounded-4 p-3 mb-4 shadow-sm">
+        <form asp-action="Index" method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="@Model.SearchQuery" class="form-control border-start-0" placeholder="Tìm sản phẩm, mã SKU, thiết bị..." />
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <select name="category" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Tất cả danh mục --</option>
+                    @foreach (var cat in Model.Categories)
+                    {
+                        <option value="@cat" selected="@(Model.CategoryName == cat)">@cat</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="sort" class="form-select" onchange="this.form.submit()">
+                    <option value="featured" selected="@(Model.SortBy == "featured")">Nổi bật</option>
+                    <option value="newest" selected="@(Model.SortBy == "newest")">Mới nhất</option>
+                    <option value="price_asc" selected="@(Model.SortBy == "price_asc")">Giá tăng dần</option>
+                    <option value="price_desc" selected="@(Model.SortBy == "price_desc")">Giá giảm dần</option>
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 rounded-3">Lọc</button>
+                @if (!string.IsNullOrEmpty(Model.SearchQuery) || !string.IsNullOrEmpty(Model.CategoryName))
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-3" title="Xóa bộ lọc">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                }
+            </div>
+        </form>
+    </div>
+
+    <!-- Product Grid -->
+    @if (!Model.Products.Any())
+    {
+        <div class="text-center py-5 bg-body rounded-4 border shadow-sm">
+            <i class="bi bi-box-seam text-muted display-3 mb-2 d-block"></i>
+            <h5 class="fw-bold">Chưa có mặt hàng nào phù hợp</h5>
+            <p class="text-muted small">Vui lòng thử tìm từ khóa khác hoặc quay lại sau.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4 mb-4">
+            @foreach (var product in Model.Products)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="product-card">
+                        <div class="card-thumb-wrap">
+                            <img src="@product.ImageUrl" alt="@product.Name" class="card-thumb-img" onerror="this.src='https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'" />
+                            <span class="card-category-badge bg-dark text-white">@product.CategoryName</span>
+                            @if (product.IsFeatured)
+                            {
+                                <span class="badge bg-danger position-absolute top-0 end-0 m-3 rounded-pill">Nổi bật</span>
+                            }
+                        </div>
+
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-center mb-2 small">
+                                @if (!string.IsNullOrWhiteSpace(product.Sku))
+                                {
+                                    <span class="text-muted font-monospace">SKU: @product.Sku</span>
+                                }
+                                @if (product.StockStatus == ProductStockStatus.InStock)
+                                {
+                                    <span class="badge bg-success-subtle text-success rounded-pill">Còn hàng</span>
+                                }
+                                else if (product.StockStatus == ProductStockStatus.PreOrder)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning rounded-pill">Đặt trước</span>
+                                }
+                                else if (product.StockStatus == ProductStockStatus.OutOfStock)
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill">Tạm hết hàng</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-info-subtle text-info rounded-pill">Liên hệ</span>
+                                }
+                            </div>
+
+                            <h5 class="fw-bold mb-2 fs-6">
+                                <a asp-action="Details" asp-route-slug="@product.Slug" class="text-decoration-none text-reset hover-primary">
+                                    @product.Name
+                                </a>
+                            </h5>
+
+                            <p class="text-muted small mb-3 flex-grow-1">@product.ShortDescription</p>
+
+                            <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+                                <div>
+                                    @if (product.Price > 0 && product.StockStatus != ProductStockStatus.ContactForPrice)
+                                    {
+                                        <div class="product-price">@product.Price.ToString("N0") @product.Currency</div>
+                                        @if (product.OriginalPrice.HasValue && product.OriginalPrice > product.Price)
+                                        {
+                                            <div class="product-old-price">@product.OriginalPrice.Value.ToString("N0") @product.Currency</div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="fw-bold text-primary">Liên hệ báo giá</div>
+                                    }
+                                </div>
+                                <a asp-action="Details" asp-route-slug="@product.Slug" class="btn btn-sm btn-danger rounded-pill px-3 fw-semibold">
+                                    Xem &amp; Đặt <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Phân trang sản phẩm" class="d-flex justify-content-center mt-4">
+                <ul class="pagination">
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-q="@Model.SearchQuery" asp-route-category="@Model.CategoryName" asp-route-sort="@Model.SortBy">@i</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        }
+    }
+</div>

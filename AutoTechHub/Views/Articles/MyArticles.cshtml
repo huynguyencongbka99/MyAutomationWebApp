@@ -1,0 +1,138 @@
+@model List<AutoTechHub.Models.Article>
+@{
+    ViewData["Title"] = "Bài Viết Của Tôi";
+    var role = User.GetUserRole();
+}
+
+<div class="container my-4 my-md-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-file-earmark-richtext text-primary me-2"></i>Bài Viết Của Tôi
+            </h2>
+            <p class="text-muted small mb-0">
+                @if (role == UserRole.User)
+                {
+                    <span>Bài viết bạn gửi sẽ ở trạng thái <strong>Chờ duyệt</strong> cho đến khi Admin phê duyệt xuất bản.</span>
+                }
+                else
+                {
+                    <span>Bạn đang có quyền <strong>@role.GetRoleDisplayName()</strong> — có thể viết và xuất bản trực tiếp.</span>
+                }
+            </p>
+        </div>
+
+        <a asp-action="Create" class="btn btn-primary rounded-pill px-4 shadow-sm">
+            <i class="bi bi-pencil-square me-1"></i> Viết bài mới
+        </a>
+    </div>
+
+    <!-- Summary Badges -->
+    <div class="row g-2 g-md-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card bg-body border rounded-4 p-3 text-center shadow-sm">
+                <div class="fs-4 fw-bold text-primary">@Model.Count</div>
+                <div class="small text-muted">Tổng bài viết</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-body border rounded-4 p-3 text-center shadow-sm">
+                <div class="fs-4 fw-bold text-success">@Model.Count(a => a.ApprovalStatus == ArticleApprovalStatus.Approved && a.IsPublished)</div>
+                <div class="small text-muted">Đã đăng</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-body border rounded-4 p-3 text-center shadow-sm">
+                <div class="fs-4 fw-bold text-warning">@Model.Count(a => a.ApprovalStatus == ArticleApprovalStatus.Pending)</div>
+                <div class="small text-muted">Chờ Admin duyệt</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-body border rounded-4 p-3 text-center shadow-sm">
+                <div class="fs-4 fw-bold text-danger">@Model.Count(a => a.ApprovalStatus == ArticleApprovalStatus.Rejected)</div>
+                <div class="small text-muted">Cần chỉnh sửa</div>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5 bg-body rounded-4 border shadow-sm">
+            <i class="bi bi-journal-plus text-primary display-4 mb-2 d-block"></i>
+            <h5 class="fw-bold">Bạn chưa có bài viết nào</h5>
+            <p class="text-muted small mb-3">Hãy bắt đầu chia sẻ kinh nghiệm lập trình PLC, RPA, IoT hoặc giải pháp kỹ thuật của bạn!</p>
+            <a asp-action="Create" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-pencil-square me-1"></i> Soạn bài viết đầu tiên
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-3">
+            @foreach (var article in Model)
+            {
+                <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                @if (article.ApprovalStatus == ArticleApprovalStatus.Approved && article.IsPublished)
+                                {
+                                    <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle me-1"></i>Đã duyệt &amp; Xuất bản</span>
+                                }
+                                else if (article.ApprovalStatus == ArticleApprovalStatus.Pending)
+                                {
+                                    <span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Chờ Admin phê duyệt</span>
+                                }
+                                else if (article.ApprovalStatus == ArticleApprovalStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger rounded-pill"><i class="bi bi-x-circle me-1"></i>Bị từ chối</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary rounded-pill"><i class="bi bi-file-earmark me-1"></i>Bản nháp / Ẩn</span>
+                                }
+
+                                <span class="badge bg-@article.Category.BadgeColor-subtle text-@article.Category.BadgeColor">@article.Category.Name</span>
+                                <span class="small text-muted"><i class="bi bi-calendar3 me-1"></i>@article.CreatedAt.ToString("dd/MM/yyyy")</span>
+                            </div>
+
+                            <h5 class="fw-bold mb-1">
+                                <a asp-action="Details" asp-route-slug="@article.Slug" class="text-decoration-none text-reset hover-primary">
+                                    @article.Title
+                                </a>
+                            </h5>
+                            <p class="small text-muted mb-2">@article.Summary</p>
+
+                            @if (!string.IsNullOrWhiteSpace(article.ReviewNote) && article.ApprovalStatus == ArticleApprovalStatus.Rejected)
+                            {
+                                <div class="alert alert-danger py-2 px-3 small rounded-3 mb-0 mt-2">
+                                    <strong><i class="bi bi-chat-left-dots me-1"></i>Phản hồi từ Admin:</strong> @article.ReviewNote
+                                </div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(article.ReviewNote) && article.ApprovalStatus == ArticleApprovalStatus.Approved)
+                            {
+                                <div class="small text-success mt-1">
+                                    <i class="bi bi-check2-all me-1"></i>Ghi chú duyệt: @article.ReviewNote
+                                </div>
+                            }
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+                            <a asp-action="Details" asp-route-slug="@article.Slug" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                <i class="bi bi-eye me-1"></i> Xem
+                            </a>
+                            <a asp-action="Edit" asp-route-id="@article.Id" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                                <i class="bi bi-pencil me-1"></i> Sửa
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@article.Id" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa bài viết này?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

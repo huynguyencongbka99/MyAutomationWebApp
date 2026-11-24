@@ -1,0 +1,47 @@
+@{
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "Index";
+    bool isAdmin = User.IsInRole(nameof(UserRole.Admin));
+}
+
+<div class="mb-4">
+    <ul class="nav nav-pills admin-nav-scroll">
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3 @(currentAction == "Index" ? "active" : "")" asp-controller="Admin" asp-action="Index">
+                <i class="bi bi-speedometer2 me-1"></i> @(isAdmin ? "Tổng quan & Duyệt bài" : "Quản lý bài viết")
+            </a>
+        </li>
+        @if (isAdmin)
+        {
+            <li class="nav-item">
+                <a class="nav-link rounded-pill px-3 @(currentAction == "Users" ? "active" : "")" asp-controller="Admin" asp-action="Users">
+                    <i class="bi bi-people me-1"></i> Phân quyền &amp; Tài khoản
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded-pill px-3 @(currentAction == "Ads" || currentAction == "CreateAd" || currentAction == "EditAd" ? "active" : "")" asp-controller="Admin" asp-action="Ads">
+                    <i class="bi bi-megaphone me-1"></i> Quảng cáo
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded-pill px-3 @(currentAction == "Products" || currentAction == "CreateProduct" || currentAction == "EditProduct" ? "active" : "")" asp-controller="Admin" asp-action="Products">
+                    <i class="bi bi-shop me-1"></i> Bán hàng &amp; Mặt hàng
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded-pill px-3 @(currentAction == "Branding" ? "active" : "")" asp-controller="Admin" asp-action="Branding">
+                    <i class="bi bi-palette me-1"></i> Logo &amp; Thương hiệu
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded-pill px-3 @(currentAction == "Designer" ? "active" : "")" asp-controller="Admin" asp-action="Designer">
+                    <i class="bi bi-brush me-1"></i> Web Designer
+                </a>
+            </li>
+        }
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3" asp-controller="Articles" asp-action="Create">
+                <i class="bi bi-pencil-square me-1"></i> Viết bài mới
+            </a>
+        </li>
+    </ul>
+</div>

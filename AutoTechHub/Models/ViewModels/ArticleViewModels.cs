@@ -17,6 +17,11 @@ namespace AutoTechHub.Models.ViewModels
         public int TotalViews { get; set; }
         public int TotalCategories { get; set; }
         public int TotalSnippets { get; set; }
+
+        public SiteSetting SiteSetting { get; set; } = new SiteSetting();
+        public List<Product> FeaturedProducts { get; set; } = new List<Product>();
+        public List<HomeSectionItem> HomeSections { get; set; } = new List<HomeSectionItem>();
+        public List<WebBlock> CustomBlocks { get; set; } = new List<WebBlock>();
     }
 
     public class ArticleListViewModel
@@ -91,17 +96,33 @@ namespace AutoTechHub.Models.ViewModels
         [Display(Name = "Xuất bản ngay")]
         public bool IsPublished { get; set; } = true;
 
+        public ArticleApprovalStatus ApprovalStatus { get; set; } = ArticleApprovalStatus.Approved;
+
+        public string ReviewNote { get; set; }
+
+        // "publish" | "submit" | "draft"
+        public string SubmitAction { get; set; }
+
         public List<Category> AvailableCategories { get; set; } = new List<Category>();
     }
 
     public class AdminDashboardViewModel
     {
+        public bool IsAdmin { get; set; }
         public int TotalArticles { get; set; }
         public int PublishedArticles { get; set; }
+        public int PendingApprovalCount { get; set; }
         public int TotalViews { get; set; }
         public int TotalLikes { get; set; }
         public int TotalComments { get; set; }
         public int TotalSnippets { get; set; }
+        public int TotalUsers { get; set; }
+        public int ActiveAdsCount { get; set; }
+        public int ActiveProductsCount { get; set; }
+        public int PendingInquiriesCount { get; set; }
+
+        public SiteSetting SiteSetting { get; set; } = new SiteSetting();
+        public List<Article> PendingArticles { get; set; } = new List<Article>();
         public List<Article> RecentArticles { get; set; } = new List<Article>();
         public List<Comment> RecentComments { get; set; } = new List<Comment>();
     }

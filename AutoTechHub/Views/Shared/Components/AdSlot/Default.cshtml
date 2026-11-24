@@ -1,0 +1,128 @@
+@model List<AutoTechHub.Models.Advertisement>
+@using AutoTechHub.Models
+@{
+    var placement = ViewBag.Placement is AdPlacement p ? p : AdPlacement.Sidebar;
+}
+
+@if (Model != null && Model.Any())
+{
+    @if (placement == AdPlacement.HeaderBanner || placement == AdPlacement.FooterBanner)
+    {
+        <div class="container my-3">
+            @foreach (var ad in Model)
+            {
+                <div class="ad-slot-wrapper mb-2">
+                    @if (ad.AdType == AdContentType.HtmlCode && !string.IsNullOrWhiteSpace(ad.HtmlContent))
+                    {
+                        <div class="ad-banner-card p-3 text-center">
+                            <div class="d-flex justify-content-end mb-1">
+                                <span class="ad-badge-label">Quảng cáo</span>
+                            </div>
+                            @Html.Raw(ad.HtmlContent)
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-controller="Ads" asp-action="Go" asp-route-id="@ad.Id" target="@(ad.OpenInNewTab ? "_blank" : "_self")" rel="sponsored noopener noreferrer" class="ad-banner-card d-flex flex-column flex-md-row align-items-center gap-3 p-3 text-decoration-none text-reset">
+                            @if (!string.IsNullOrWhiteSpace(ad.ImageUrl))
+                            {
+                                <img src="@ad.ImageUrl" alt="@ad.Title" class="rounded-3 object-fit-cover flex-shrink-0" style="width: 100%; max-width: 180px; height: 84px;" onerror="this.style.display='none'" />
+                            }
+                            <div class="flex-grow-1 text-center text-md-start">
+                                <div class="mb-1">
+                                    <span class="ad-badge-label me-2">Tài trợ</span>
+                                    <span class="fw-bold text-primary">@ad.Title</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(ad.Description))
+                                {
+                                    <p class="small text-muted mb-0">@ad.Description</p>
+                                }
+                            </div>
+                            <span class="btn btn-sm btn-primary rounded-pill px-3 flex-shrink-0">
+                                @(string.IsNullOrWhiteSpace(ad.CtaText) ? "Xem ngay" : ad.CtaText) <i class="bi bi-arrow-right ms-1"></i>
+                            </span>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else if (placement == AdPlacement.InArticle)
+    {
+        <div class="my-4">
+            @foreach (var ad in Model)
+            {
+                <div class="ad-slot-wrapper mb-3">
+                    @if (ad.AdType == AdContentType.HtmlCode && !string.IsNullOrWhiteSpace(ad.HtmlContent))
+                    {
+                        <div class="ad-banner-card p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="ad-badge-label">Quảng cáo</span>
+                            </div>
+                            @Html.Raw(ad.HtmlContent)
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="ad-banner-card p-3 p-md-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="ad-badge-label"><i class="bi bi-megaphone me-1"></i>Nội dung tài trợ</span>
+                            </div>
+                            <div class="d-flex flex-column flex-md-row align-items-center gap-3">
+                                @if (!string.IsNullOrWhiteSpace(ad.ImageUrl))
+                                {
+                                    <img src="@ad.ImageUrl" alt="@ad.Title" class="rounded-3 object-fit-cover flex-shrink-0" style="width: 100%; max-width: 210px; height: 120px;" onerror="this.style.display='none'" />
+                                }
+                                <div class="flex-grow-1 text-center text-md-start">
+                                    <h6 class="fw-bold mb-1">@ad.Title</h6>
+                                    @if (!string.IsNullOrWhiteSpace(ad.Description))
+                                    {
+                                        <p class="small text-muted mb-3">@ad.Description</p>
+                                    }
+                                    <a asp-controller="Ads" asp-action="Go" asp-route-id="@ad.Id" target="@(ad.OpenInNewTab ? "_blank" : "_self")" rel="sponsored noopener noreferrer" class="btn btn-sm btn-primary rounded-pill px-4">
+                                        @(string.IsNullOrWhiteSpace(ad.CtaText) ? "Tìm hiểu thêm" : ad.CtaText) <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <!-- Sidebar Placement -->
+        <div class="d-flex flex-column gap-3 mb-4">
+            @foreach (var ad in Model)
+            {
+                <div class="ad-banner-card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="ad-badge-label"><i class="bi bi-megaphone me-1"></i>Quảng cáo</span>
+                    </div>
+                    @if (ad.AdType == AdContentType.HtmlCode && !string.IsNullOrWhiteSpace(ad.HtmlContent))
+                    {
+                        @Html.Raw(ad.HtmlContent)
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrWhiteSpace(ad.ImageUrl))
+                        {
+                            <a asp-controller="Ads" asp-action="Go" asp-route-id="@ad.Id" target="@(ad.OpenInNewTab ? "_blank" : "_self")" rel="sponsored noopener noreferrer" class="d-block mb-2 overflow-hidden rounded-3">
+                                <img src="@ad.ImageUrl" alt="@ad.Title" class="w-100 object-fit-cover" style="height: 155px;" onerror="this.style.display='none'" />
+                            </a>
+                        }
+                        <h6 class="fw-bold mb-1">@ad.Title</h6>
+                        @if (!string.IsNullOrWhiteSpace(ad.Description))
+                        {
+                            <p class="small text-muted mb-3">@ad.Description</p>
+                        }
+                        <a asp-controller="Ads" asp-action="Go" asp-route-id="@ad.Id" target="@(ad.OpenInNewTab ? "_blank" : "_self")" rel="sponsored noopener noreferrer" class="btn btn-sm btn-outline-primary rounded-pill w-100 fw-semibold">
+                            @(string.IsNullOrWhiteSpace(ad.CtaText) ? "Xem chi tiết" : ad.CtaText) <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    }
+}

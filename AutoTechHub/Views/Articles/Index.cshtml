@@ -61,7 +61,7 @@
                     <option value="">-- Tất cả chuyên mục --</option>
                     @foreach (var cat in Model.Categories)
                     {
-                        <option value="@cat.Slug" selected="@(Model.CategorySlug == cat.Slug)">@cat.Name (@cat.Articles.Count)</option>
+                        <option value="@cat.Slug" selected="@(Model.CategorySlug == cat.Slug)">@cat.Name (@cat.Articles.Count(a => a.IsPublished && a.ApprovalStatus == ArticleApprovalStatus.Approved))</option>
                     }
                 </select>
             </div>
@@ -193,8 +193,11 @@
             }
         </div>
 
-        <!-- Sidebar (Categories & Tags) -->
+        <!-- Sidebar (Categories, Ads & Tags) -->
         <div class="col-lg-3">
+            <!-- Sidebar Ads -->
+            @await Component.InvokeAsync("AdSlot", new { placement = AdPlacement.Sidebar })
+
             <!-- Categories List -->
             <div class="card bg-body border rounded-4 p-3.5 mb-4 shadow-sm">
                 <h6 class="fw-bold mb-3 text-primary text-uppercase fs-7">
@@ -208,7 +211,7 @@
                     {
                         <a asp-action="Index" asp-route-category="@cat.Slug" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center px-2 py-2 border-0 rounded-2 @(Model.CategorySlug == cat.Slug ? "fw-bold text-primary bg-surface-alt" : "")">
                             <span><i class="bi @cat.Icon me-1.5 text-@cat.BadgeColor"></i>@cat.Name</span>
-                            <span class="badge bg-secondary rounded-pill">@cat.Articles.Count</span>
+                            <span class="badge bg-secondary rounded-pill">@cat.Articles.Count(a => a.IsPublished && a.ApprovalStatus == ArticleApprovalStatus.Approved)</span>
                         </a>
                     }
                 </div>

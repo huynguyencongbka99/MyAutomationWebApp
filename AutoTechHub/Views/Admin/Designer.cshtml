@@ -1,0 +1,596 @@
+@model AutoTechHub.Models.ViewModels.WebDesignerViewModel
+@{
+    ViewData["Title"] = "Web Visual Designer Studio";
+}
+
+<div class="container-fluid px-3 px-lg-4 my-4">
+    <!-- Top Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-brush-fill text-primary me-2"></i>Web Designer Studio
+            </h2>
+            <p class="text-muted small mb-0">Thiết kế giao diện trực quan: đổi màu sắc, phông chữ, kéo-thả sắp xếp bố cục trang chủ, sửa Hero/Footer và tạo khối tự do với khung xem trước trực tiếp.</p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a asp-controller="Home" asp-action="Index" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Mở web ở tab mới
+            </a>
+            <form asp-action="ResetDesigner" method="post" class="m-0" onsubmit="return confirm('Khôi phục toàn bộ màu sắc, font chữ, bố cục và chữ mặc định?');">
+                <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Khôi phục mặc định
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <partial name="_AdminNav" />
+
+    <div class="row g-4 align-items-start">
+        <!-- LEFT: DESIGNER CONTROLS -->
+        <div class="col-xl-5">
+            <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm">
+                <!-- Designer Tabs -->
+                <ul class="nav nav-pills nav-fill gap-1 bg-surface-alt p-1.5 rounded-3 mb-3" id="designerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active small fw-semibold py-2" data-bs-toggle="pill" data-bs-target="#tab-theme" type="button">
+                            <i class="bi bi-palette me-1"></i> Theme
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link small fw-semibold py-2" data-bs-toggle="pill" data-bs-target="#tab-layout" type="button">
+                            <i class="bi bi-layout-wtf me-1"></i> Bố cục
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link small fw-semibold py-2" data-bs-toggle="pill" data-bs-target="#tab-content" type="button">
+                            <i class="bi bi-type me-1"></i> Nội dung
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link small fw-semibold py-2" data-bs-toggle="pill" data-bs-target="#tab-blocks" type="button">
+                            <i class="bi bi-bricks me-1"></i> Khối tự do
+                        </button>
+                    </li>
+                </ul>
+
+                <form asp-action="SaveDesigner" method="post" id="designerMainForm">
+                    <input type="hidden" asp-for="Design.HomeLayoutJson" id="homeLayoutJsonInput" />
+
+                    <div class="tab-content">
+                        <!-- TAB 1: THEME & COLORS -->
+                        <div class="tab-pane fade show active" id="tab-theme">
+                            <label class="form-label small fw-bold text-primary mb-2">
+                                <i class="bi bi-magic me-1"></i>Bộ màu mẫu có sẵn (1-Click Presets)
+                            </label>
+                            <div class="d-flex flex-wrap gap-1.5 mb-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="applyPreset('#0d6efd','#0dcaf0',16)">Xanh Công Nghiệp</button>
+                                <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="applyPreset('#0891b2','#22d3ee',12)">Cyber Cyan</button>
+                                <button type="button" class="btn btn-sm btn-outline-warning rounded-pill" onclick="applyPreset('#ea580c','#f59e0b',14)">Cam Tự Động Hóa</button>
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="applyPreset('#059669','#10b981',18)">Emerald IoT</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="applyPreset('#4f46e5','#a855f7',20)">Indigo AI</button>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Màu chủ đạo (Primary)</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="color" id="primaryColorPicker" class="form-control form-control-color" value="@Model.Design.PrimaryColor" oninput="syncColorText('primaryColorPicker','primaryColorText'); updateLivePreview();" />
+                                        <input asp-for="Design.PrimaryColor" id="primaryColorText" class="form-control font-monospace" oninput="syncColorPicker('primaryColorText','primaryColorPicker'); updateLivePreview();" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Màu nhấn (Accent)</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="color" id="accentColorPicker" class="form-control form-control-color" value="@Model.Design.AccentColor" oninput="syncColorText('accentColorPicker','accentColorText'); updateLivePreview();" />
+                                        <input asp-for="Design.AccentColor" id="accentColorText" class="form-control font-monospace" oninput="syncColorPicker('accentColorText','accentColorPicker'); updateLivePreview();" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Phông chữ toàn trang</label>
+                                    <select asp-for="Design.FontFamily" id="fontFamilySelect" class="form-select form-select-sm" onchange="updateLivePreview()">
+                                        <option value="Segoe UI">Segoe UI (Mặc định Windows)</option>
+                                        <option value="Be Vietnam Pro">Be Vietnam Pro (Hiện đại Tiếng Việt)</option>
+                                        <option value="Inter">Inter (Chuẩn UI Dashboard)</option>
+                                        <option value="Roboto">Roboto (Google Material)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Giao diện Sáng / Tối mặc định</label>
+                                    <select asp-for="Design.DefaultTheme" class="form-select form-select-sm">
+                                        <option value="auto">Tự động theo máy người dùng</option>
+                                        <option value="light">Mặc định Sáng (Light)</option>
+                                        <option value="dark">Mặc định Tối (Dark)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold d-flex justify-content-between">
+                                    <span>Độ bo góc thẻ (Border Radius)</span>
+                                    <span id="radiusValueLabel" class="badge bg-primary">@(Model.Design.CardRadiusPx)px</span>
+                                </label>
+                                <input asp-for="Design.CardRadiusPx" id="cardRadiusRange" type="range" min="0" max="28" step="2" class="form-range" oninput="document.getElementById('radiusValueLabel').textContent = this.value + 'px'; updateLivePreview();" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">CSS Tùy Chỉnh Nâng Cao (Custom CSS)</label>
+                                <textarea asp-for="Design.CustomCss" id="customCssInput" rows="4" class="form-control form-control-sm font-monospace" placeholder="/* Ví dụ: .hero-section { border-bottom-width: 3px; } */" oninput="updateLivePreview()"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: DRAG & DROP HOME LAYOUT -->
+                        <div class="tab-pane fade" id="tab-layout">
+                            <p class="small text-muted mb-3">
+                                <i class="bi bi-arrows-move text-primary me-1"></i>Kéo thả (hoặc bấm mũi tên <i class="bi bi-arrow-up"></i> <i class="bi bi-arrow-down"></i> trên điện thoại) để sắp xếp thứ tự các khối trên Trang chủ, hoặc gạt công tắc để Ẩn/Hiện:
+                            </p>
+
+                            <div id="layoutSectionsSortable" class="d-flex flex-column gap-2 mb-3">
+                                @for (int i = 0; i < Model.HomeSections.Count; i++)
+                                {
+                                    var sec = Model.HomeSections[i];
+                                    <div class="p-3 bg-surface-alt border rounded-3 designer-section-item d-flex align-items-center justify-content-between gap-2" draggable="true" data-key="@sec.Key" data-label="@sec.Label" data-desc="@sec.Description">
+                                        <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                            <i class="bi bi-grip-vertical text-muted fs-5 flex-shrink-0"></i>
+                                            <div class="overflow-hidden">
+                                                <div class="fw-bold small text-truncate">@sec.Label</div>
+                                                <div class="text-muted text-truncate" style="font-size: 0.75rem;">@sec.Description</div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-secondary py-0 px-1.5" onclick="moveSection(this, -1)" title="Lên trên"><i class="bi bi-arrow-up"></i></button>
+                                                <button type="button" class="btn btn-outline-secondary py-0 px-1.5" onclick="moveSection(this, 1)" title="Xuống dưới"><i class="bi bi-arrow-down"></i></button>
+                                            </div>
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input section-visible-toggle" type="checkbox" checked="@sec.Visible" onchange="serializeLayoutJson()" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: HERO, TITLES & FOOTER CONTENT -->
+                        <div class="tab-pane fade" id="tab-content">
+                            <h6 class="fw-bold text-primary small text-uppercase mb-2">Nội dung Hero Banner</h6>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold mb-1">Nhãn nhỏ (Badge)</label>
+                                <input asp-for="Design.HeroBadgeText" id="heroBadgeInput" class="form-control form-control-sm" oninput="updateLivePreview()" />
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold mb-1">Tiêu đề dòng 1</label>
+                                    <input asp-for="Design.HeroTitlePrefix" id="heroPrefixInput" class="form-control form-control-sm" oninput="updateLivePreview()" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold mb-1">Tiêu đề nổi bật</label>
+                                    <input asp-for="Design.HeroTitleHighlight" id="heroHighlightInput" class="form-control form-control-sm" oninput="updateLivePreview()" />
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold mb-1">Mô tả ngắn Hero</label>
+                                <textarea asp-for="Design.HeroSubtitle" id="heroSubtitleInput" rows="2" class="form-control form-control-sm" oninput="updateLivePreview()"></textarea>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold mb-1">Nút CTA thêm (tùy chọn)</label>
+                                    <input asp-for="Design.HeroCtaText" class="form-control form-control-sm" placeholder="Vd: Khám phá ngay" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold mb-1">Link nút CTA</label>
+                                    <input asp-for="Design.HeroCtaUrl" class="form-control form-control-sm" placeholder="/Articles" />
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-3 my-3 p-2.5 bg-surface-alt rounded-3 border">
+                                <div class="form-check form-switch m-0">
+                                    <input asp-for="Design.HeroShowSearch" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label small fw-semibold" asp-for="Design.HeroShowSearch">Ô tìm kiếm</label>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input asp-for="Design.HeroShowTags" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label small fw-semibold" asp-for="Design.HeroShowTags">Từ khóa hot</label>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input asp-for="Design.HeroShowStats" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label small fw-semibold" asp-for="Design.HeroShowStats">Thống kê</label>
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold text-primary small text-uppercase mb-2 mt-3">Tiêu đề các mục &amp; Footer</h6>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold mb-1">Mục Nổi bật</label>
+                                    <input asp-for="Design.FeaturedSectionTitle" id="featuredTitleInput" class="form-control form-control-sm" oninput="updateLivePreview()" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold mb-1">Mục Chuyên mục</label>
+                                    <input asp-for="Design.CategoriesSectionTitle" id="categoriesTitleInput" class="form-control form-control-sm" oninput="updateLivePreview()" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold mb-1">Mục Bài mới</label>
+                                    <input asp-for="Design.LatestSectionTitle" id="latestTitleInput" class="form-control form-control-sm" oninput="updateLivePreview()" />
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold mb-1">Mô tả chân trang (Footer)</label>
+                                <textarea asp-for="Design.FooterDescription" id="footerDescInput" rows="2" class="form-control form-control-sm" oninput="updateLivePreview()"></textarea>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold mb-1">GitHub URL</label>
+                                    <input asp-for="Design.GithubUrl" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold mb-1">YouTube URL</label>
+                                    <input asp-for="Design.YoutubeUrl" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold mb-1">LinkedIn URL</label>
+                                    <input asp-for="Design.LinkedinUrl" class="form-control form-control-sm" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 4 placeholder inside main form (Custom Blocks are managed in dedicated sub-forms below) -->
+                        <div class="tab-pane fade" id="tab-blocks">
+                            <p class="small text-muted mb-2">
+                                Tạo các khối giao diện tùy ý (Banner CTA, Thông báo, Khối Markdown hoặc mã HTML tự do) để chèn vào mục <strong>Khối Giao Diện Tự Do</strong> trên trang chủ.
+                            </p>
+                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 mb-3" data-bs-toggle="modal" data-bs-target="#createBlockModal">
+                                <i class="bi bi-plus-circle me-1"></i> Tạo khối giao diện mới
+                            </button>
+
+                            @if (!Model.WebBlocks.Any())
+                            {
+                                <div class="p-3 bg-surface-alt rounded-3 border text-center small text-muted">
+                                    Chưa có khối giao diện tự do nào. Nhấn "Tạo khối giao diện mới" để thêm!
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-column gap-2 mb-3">
+                                    @foreach (var blk in Model.WebBlocks)
+                                    {
+                                        <div class="p-3 bg-surface-alt border rounded-3 d-flex justify-content-between align-items-center gap-2">
+                                            <div class="overflow-hidden">
+                                                <div class="fw-bold small text-truncate">@blk.Title</div>
+                                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                                    <span class="badge bg-info-subtle text-info" style="font-size:0.68rem;">@blk.BlockType</span>
+                                                    <span class="badge bg-secondary-subtle text-secondary" style="font-size:0.68rem;">@blk.StyleVariant</span>
+                                                    <span class="badge bg-dark" style="font-size:0.68rem;">Thứ tự: @blk.DisplayOrder</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                                <div class="form-check form-switch m-0">
+                                                    <input class="form-check-input" type="checkbox" checked="@blk.IsActive" onchange="toggleWebBlock(@blk.Id, this)" />
+                                                </div>
+                                                <button type="button" class="btn btn-xs btn-outline-danger rounded-2 py-1 px-2" onclick="deleteWebBlock(@blk.Id)" title="Xóa khối">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-top d-grid">
+                        <button type="submit" class="btn btn-primary rounded-pill py-2.5 fw-bold shadow-sm">
+                            <i class="bi bi-save2-fill me-1"></i> Lưu Thiết Kế &amp; Áp Dụng Lên Web
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Hidden Delete Block Form -->
+                <form id="deleteBlockHiddenForm" asp-action="DeleteWebBlock" method="post" class="d-none">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="deleteBlockIdInput" />
+                </form>
+            </div>
+        </div>
+
+        <!-- RIGHT: LIVE VISUAL PREVIEW PANE -->
+        <div class="col-xl-7">
+            <div class="designer-preview-frame-wrap shadow-sm">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 px-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success rounded-pill"><i class="bi bi-broadcast me-1"></i>Xem Trước Trực Tiếp</span>
+                        <span class="small text-muted d-none d-sm-inline">Thay đổi màu sắc, phông chữ, bo góc và tiêu đề sẽ hiển thị tức thì</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1.5">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" id="btnPreviewDesktop" class="btn btn-primary active" onclick="setPreviewMode('desktop')" title="Xem giao diện Máy tính">
+                                <i class="bi bi-laptop me-1"></i>PC
+                            </button>
+                            <button type="button" id="btnPreviewMobile" class="btn btn-outline-primary" onclick="setPreviewMode('mobile')" title="Xem giao diện Điện thoại">
+                                <i class="bi bi-phone me-1"></i>Mobile
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="reloadPreviewFrame()" title="Tải lại khung xem trước">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <iframe id="designerPreviewFrame" src="/" class="designer-preview-iframe" title="Xem trước giao diện trang chủ"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Custom WebBlock Modal -->
+<div class="modal fade" id="createBlockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form asp-action="CreateWebBlock" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary"><i class="bi bi-bricks me-2"></i>Tạo Khối Giao Diện Tự Do Mới</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Kiểu khối</label>
+                            <select asp-for="NewBlock.BlockType" asp-items="Html.GetEnumSelectList<WebBlockType>()" id="newBlockTypeSelect" class="form-select" onchange="toggleBlockTypeFields()"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Màu nền / Phong cách</label>
+                            <select asp-for="NewBlock.StyleVariant" asp-items="Html.GetEnumSelectList<WebBlockStyle>()" class="form-select"></select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Tiêu đề khối *</label>
+                        <input asp-for="NewBlock.Title" class="form-control" required placeholder="Ví dụ: Tư vấn giải pháp Tự động hóa nhà máy 4.0" />
+                    </div>
+
+                    <div id="standardBlockFields">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Phụ đề / Mô tả</label>
+                            <input asp-for="NewBlock.Subtitle" class="form-control" placeholder="Đội ngũ kỹ sư sẵn sàng hỗ trợ tích hợp PLC, SCADA, IoT..." />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Nội dung chi tiết (Markdown - tùy chọn)</label>
+                            <textarea asp-for="NewBlock.ContentMarkdown" rows="3" class="form-control" placeholder="- Khảo sát miễn phí&#10;- Hỗ trợ 24/7"></textarea>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Chữ nút bấm (CTA)</label>
+                                <input asp-for="NewBlock.ButtonText" class="form-control" placeholder="Liên hệ ngay" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Link khi bấm nút</label>
+                                <input asp-for="NewBlock.ButtonUrl" class="form-control" placeholder="/Home/About hoặc /Products" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="customHtmlBlockField" class="mb-3" style="display:none;">
+                        <label class="form-label small fw-semibold">Mã HTML tùy chỉnh</label>
+                        <textarea asp-for="NewBlock.CustomHtmlCode" rows="5" class="form-control font-monospace" placeholder="<div class='text-center'><h3>Nội dung HTML tùy chỉnh</h3></div>"></textarea>
+                    </div>
+
+                    <div class="row g-3 align-items-center">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Thứ tự hiển thị</label>
+                            <input asp-for="NewBlock.DisplayOrder" type="number" class="form-control" />
+                        </div>
+                        <div class="col-6 pt-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="NewBlock.IsActive" class="form-check-input" type="checkbox" checked />
+                                <label class="form-check-label small fw-semibold" asp-for="NewBlock.IsActive">Hiển thị ngay</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">
+                        <i class="bi bi-plus-circle me-1"></i> Thêm khối
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function syncColorText(pickerId, textId) {
+            document.getElementById(textId).value = document.getElementById(pickerId).value;
+        }
+        function syncColorPicker(textId, pickerId) {
+            const val = document.getElementById(textId).value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                document.getElementById(pickerId).value = val;
+            }
+        }
+
+        function applyPreset(primary, accent, radius) {
+            document.getElementById('primaryColorText').value = primary;
+            document.getElementById('primaryColorPicker').value = primary;
+            document.getElementById('accentColorText').value = accent;
+            document.getElementById('accentColorPicker').value = accent;
+            document.getElementById('cardRadiusRange').value = radius;
+            document.getElementById('radiusValueLabel').textContent = radius + 'px';
+            updateLivePreview();
+        }
+
+        function setPreviewMode(mode) {
+            const frame = document.getElementById('designerPreviewFrame');
+            const btnPc = document.getElementById('btnPreviewDesktop');
+            const btnMob = document.getElementById('btnPreviewMobile');
+            if (mode === 'mobile') {
+                frame.classList.add('mobile-mode');
+                btnMob.className = 'btn btn-primary active';
+                btnPc.className = 'btn btn-outline-primary';
+            } else {
+                frame.classList.remove('mobile-mode');
+                btnPc.className = 'btn btn-primary active';
+                btnMob.className = 'btn btn-outline-primary';
+            }
+        }
+
+        function reloadPreviewFrame() {
+            const frame = document.getElementById('designerPreviewFrame');
+            frame.src = '/?t=' + Date.now();
+        }
+
+        function updateLivePreview() {
+            const frame = document.getElementById('designerPreviewFrame');
+            try {
+                const doc = frame.contentDocument || frame.contentWindow.document;
+                if (!doc) return;
+
+                const primary = document.getElementById('primaryColorText').value || '#0d6efd';
+                const accent = document.getElementById('accentColorText').value || '#0dcaf0';
+                const radius = document.getElementById('cardRadiusRange').value || '16';
+                const fontChoice = document.getElementById('fontFamilySelect').value;
+
+                const fontMap = {
+                    'Be Vietnam Pro': "'Be Vietnam Pro', system-ui, sans-serif",
+                    'Inter': "'Inter', system-ui, sans-serif",
+                    'Roboto': "'Roboto', system-ui, sans-serif",
+                    'Segoe UI': "'Segoe UI', system-ui, sans-serif"
+                };
+
+                const root = doc.documentElement;
+                root.style.setProperty('--primary-color', primary);
+                root.style.setProperty('--accent-cyan', accent);
+                root.style.setProperty('--card-radius', radius + 'px');
+                root.style.setProperty('--app-font', fontMap[fontChoice] || fontMap['Segoe UI']);
+                root.style.setProperty('--bs-primary', primary);
+                root.style.setProperty('--bs-link-color', primary);
+
+                const setTxt = (id, inputId) => {
+                    const el = doc.getElementById(id);
+                    const inp = document.getElementById(inputId);
+                    if (el && inp) el.textContent = inp.value;
+                };
+
+                setTxt('hero-badge-text', 'heroBadgeInput');
+                setTxt('hero-title-prefix', 'heroPrefixInput');
+                setTxt('hero-title-highlight', 'heroHighlightInput');
+                setTxt('hero-subtitle', 'heroSubtitleInput');
+                setTxt('featured-section-title', 'featuredTitleInput');
+                setTxt('categories-section-title', 'categoriesTitleInput');
+                setTxt('latest-section-title', 'latestTitleInput');
+                setTxt('footer-desc-text', 'footerDescInput');
+
+                let customStyle = doc.getElementById('custom-user-css');
+                if (!customStyle) {
+                    customStyle = doc.createElement('style');
+                    customStyle.id = 'custom-user-css';
+                    doc.head.appendChild(customStyle);
+                }
+                customStyle.textContent = document.getElementById('customCssInput').value || '';
+            } catch (e) {
+                // Ignore cross-frame timing errors before load completes
+            }
+        }
+
+        // Drag & Drop + Arrow Ordering for Layout Sections
+        const sortableContainer = document.getElementById('layoutSectionsSortable');
+        let draggedItem = null;
+
+        if (sortableContainer) {
+            sortableContainer.addEventListener('dragstart', (e) => {
+                const item = e.target.closest('.designer-section-item');
+                if (!item) return;
+                draggedItem = item;
+                item.classList.add('dragging');
+            });
+
+            sortableContainer.addEventListener('dragend', () => {
+                if (draggedItem) {
+                    draggedItem.classList.remove('dragging');
+                    draggedItem = null;
+                }
+                serializeLayoutJson();
+            });
+
+            sortableContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!draggedItem) return;
+                const afterEl = getDragAfterElement(sortableContainer, e.clientY);
+                if (afterEl == null) {
+                    sortableContainer.appendChild(draggedItem);
+                } else {
+                    sortableContainer.insertBefore(draggedItem, afterEl);
+                }
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const els = [...container.querySelectorAll('.designer-section-item:not(.dragging)')];
+            return els.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function moveSection(btn, dir) {
+            const item = btn.closest('.designer-section-item');
+            if (!item) return;
+            if (dir < 0 && item.previousElementSibling) {
+                item.parentNode.insertBefore(item, item.previousElementSibling);
+            } else if (dir > 0 && item.nextElementSibling) {
+                item.parentNode.insertBefore(item.nextElementSibling, item);
+            }
+            serializeLayoutJson();
+        }
+
+        function serializeLayoutJson() {
+            const items = [];
+            document.querySelectorAll('#layoutSectionsSortable .designer-section-item').forEach((el) => {
+                const toggle = el.querySelector('.section-visible-toggle');
+                items.push({
+                    Key: el.getAttribute('data-key'),
+                    Label: el.getAttribute('data-label'),
+                    Description: el.getAttribute('data-desc'),
+                    Visible: toggle ? toggle.checked : true
+                });
+            });
+            document.getElementById('homeLayoutJsonInput').value = JSON.stringify(items);
+        }
+
+        document.getElementById('designerMainForm').addEventListener('submit', serializeLayoutJson);
+        document.getElementById('designerPreviewFrame').addEventListener('load', updateLivePreview);
+
+        function toggleBlockTypeFields() {
+            const val = document.getElementById('newBlockTypeSelect').value;
+            const isHtml = val === '3' || val === 'CustomHtml';
+            document.getElementById('standardBlockFields').style.display = isHtml ? 'none' : 'block';
+            document.getElementById('customHtmlBlockField').style.display = isHtml ? 'block' : 'none';
+        }
+
+        async function toggleWebBlock(id, cb) {
+            const res = await fetch(`/Admin/ToggleWebBlockActive/${id}`, { method: 'POST' });
+            if (res.ok) {
+                reloadPreviewFrame();
+            } else {
+                cb.checked = !cb.checked;
+            }
+        }
+
+        function deleteWebBlock(id) {
+            if (!confirm('Xóa khối giao diện này?')) return;
+            document.getElementById('deleteBlockIdInput').value = id;
+            document.getElementById('deleteBlockHiddenForm').submit();
+        }
+    </script>
+}

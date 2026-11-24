@@ -1,0 +1,407 @@
+@model AutoTechHub.Models.ViewModels.AdminUsersViewModel
+@{
+    ViewData["Title"] = "Quản Lý Phân Quyền & Tài Khoản";
+    var currentAdminId = User.GetUserId() ?? 0;
+}
+
+<div class="container my-4 my-md-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-people-fill text-primary me-2"></i>Quản Lý Người Dùng &amp; Phân Quyền
+            </h2>
+            <p class="text-muted small mb-0">Quản lý đổi quyền, khóa/mở khóa, đặt lại mật khẩu và xóa các tài khoản ngoài Quản trị viên.</p>
+        </div>
+        <button class="btn btn-primary rounded-pill px-4 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#createUserBox">
+            <i class="bi bi-person-plus-fill me-1"></i> Tạo tài khoản mới
+        </button>
+    </div>
+
+    <partial name="_AdminNav" />
+
+    <!-- Role Legend -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="p-3 bg-body border rounded-4 shadow-sm h-100">
+                <span class="badge bg-danger rounded-pill mb-2">Admin (Quản trị viên - Được bảo vệ)</span>
+                <p class="small text-muted mb-0">Toàn quyền quản lý hệ thống và phê duyệt bài viết. Tài khoản Admin được bảo vệ khỏi thao tác xóa, khóa và hạ quyền trên giao diện.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3 bg-body border rounded-4 shadow-sm h-100">
+                <span class="badge bg-success rounded-pill mb-2">Manager (Người quản lý)</span>
+                <p class="small text-muted mb-0">Được phép viết bài mới và đăng xuất bản trực tiếp không cần chờ phê duyệt, quản lý bài viết của mình và kho Snippets.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3 bg-body border rounded-4 shadow-sm h-100">
+                <span class="badge bg-secondary rounded-pill mb-2">User (Người dùng)</span>
+                <p class="small text-muted mb-0">Được phép viết bài và nộp ở trạng thái Chờ duyệt; bài viết chỉ hiển thị công khai sau khi được Admin phê duyệt.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Form (Collapsible) -->
+    <div class="collapse mb-4" id="createUserBox">
+        <div class="card bg-body border border-primary rounded-4 p-4 shadow-sm">
+            <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-person-plus me-2"></i>Thêm Tài Khoản Mới</h5>
+            <form asp-action="CreateUser" method="post" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Tên đăng nhập *</label>
+                    <input asp-for="NewUser.Username" class="form-control" required placeholder="vd: quanly_plc" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Họ và tên *</label>
+                    <input asp-for="NewUser.FullName" class="form-control" required placeholder="Trần Văn B" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Email *</label>
+                    <input asp-for="NewUser.Email" type="email" class="form-control" required placeholder="b@example.com" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Mật khẩu *</label>
+                    <input asp-for="NewUser.Password" type="password" class="form-control" required minlength="6" placeholder="Tối thiểu 6 ký tự" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Phân quyền vai trò</label>
+                    <select asp-for="NewUser.Role" class="form-select">
+                        <option value="@UserRole.User">User - Viết bài chờ duyệt</option>
+                        <option value="@UserRole.Manager">Manager - Viết &amp; đăng trực tiếp</option>
+                        <option value="@UserRole.Admin">Admin - Toàn quyền hệ thống</option>
+                    </select>
+                </div>
+                <div class="col-md-8 d-flex align-items-end justify-content-end">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">
+                        <i class="bi bi-check2-circle me-1"></i> Tạo tài khoản
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Users Table / Mobile Cards -->
+    <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-list-ul text-primary me-2"></i>Danh Sách Tài Khoản (@Model.Users.Count)</h5>
+
+            <div class="d-flex flex-wrap gap-2">
+                <input type="text" id="userSearchInput" class="form-control form-control-sm" style="width: 190px;" placeholder="Tìm tên, username, email..." oninput="filterUsers()" />
+                <select id="userRoleFilter" class="form-select form-select-sm" style="width: 155px;" onchange="filterUsers()">
+                    <option value="">Tất cả vai trò</option>
+                    <option value="User">Chỉ User</option>
+                    <option value="Manager">Chỉ Manager</option>
+                    <option value="Admin">Chỉ Admin</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Desktop Table -->
+        <div class="table-responsive d-none d-lg-block">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Tài khoản</th>
+                        <th>Họ tên &amp; Email</th>
+                        <th>Bài viết</th>
+                        <th>Trạng thái</th>
+                        <th>Đổi phân quyền</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model.Users)
+                    {
+                        bool isProtectedAdmin = user.Role == UserRole.Admin;
+                        bool isSelf = user.Id == currentAdminId;
+                        <tr class="user-filter-item" data-role="@user.Role.ToString()" data-search="@($"{user.Username} {user.FullName} {user.Email}".ToLowerInvariant())">
+                            <td>
+                                <div class="fw-bold">
+                                    @@@user.Username
+                                    @if (isSelf)
+                                    {
+                                        <span class="badge bg-primary-subtle text-primary ms-1">Bạn</span>
+                                    }
+                                </div>
+                                <div class="small text-muted">Tham gia: @user.CreatedAt.ToString("dd/MM/yyyy")</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@user.FullName</div>
+                                <div class="small text-muted">@user.Email</div>
+                            </td>
+                            <td><span class="badge bg-secondary rounded-pill">@user.AuthoredArticles.Count bài</span></td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success-subtle text-success">Hoạt động</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger">Đã khóa</span>
+                                }
+                                @if (user.MustChangePassword)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning ms-1" title="Phải đổi mật khẩu khi đăng nhập">Cần đổi MK</span>
+                                }
+                            </td>
+                            <td>
+                                @if (isProtectedAdmin)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1.5">
+                                        <i class="bi bi-shield-lock-fill me-1"></i>Quản trị viên (Cố định)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <form asp-action="UpdateUserRole" method="post" class="d-flex gap-1.5 align-items-center">
+                                        <input type="hidden" name="userId" value="@user.Id" />
+                                        <select name="role" class="form-select form-select-sm" style="width: 165px;">
+                                            <option value="@UserRole.User" selected="@(user.Role == UserRole.User)">User (Chờ duyệt)</option>
+                                            <option value="@UserRole.Manager" selected="@(user.Role == UserRole.Manager)">Manager (Đăng ngay)</option>
+                                            <option value="@UserRole.Admin" selected="@(user.Role == UserRole.Admin)">Admin (Quản trị)</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary rounded-3" title="Áp dụng quyền mới">
+                                            <i class="bi bi-check2"></i> Lưu
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1.5 align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5" onclick="openResetPasswordModal(@user.Id, '@user.Username', '@user.FullName.Replace("'", "\\'")')" title="Đổi / Đặt lại mật khẩu">
+                                        <i class="bi bi-key me-1"></i>Đổi MK
+                                    </button>
+                                    @if (!isProtectedAdmin && !isSelf)
+                                    {
+                                        <form asp-action="ToggleUserLock" method="post" class="m-0">
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="submit" class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success") rounded-pill px-2.5" title="@(user.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")">
+                                                <i class="bi @(user.IsActive ? "bi-lock" : "bi-unlock") me-1"></i>@(user.IsActive ? "Khóa" : "Mở")
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" onclick="openDeleteUserModal(@user.Id, '@user.Username', '@user.FullName.Replace("'", "\\'")', '@user.Role.GetRoleDisplayName()', @user.AuthoredArticles.Count)" title="Xóa người dùng">
+                                            <i class="bi bi-trash me-1"></i>Xóa
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile & Tablet User Cards -->
+        <div class="d-lg-none d-flex flex-column gap-3">
+            @foreach (var user in Model.Users)
+            {
+                bool isProtectedAdmin = user.Role == UserRole.Admin;
+                bool isSelf = user.Id == currentAdminId;
+                <div class="p-3 bg-surface-alt rounded-4 border user-filter-item" data-role="@user.Role.ToString()" data-search="@($"{user.Username} {user.FullName} {user.Email}".ToLowerInvariant())">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div class="fw-bold">
+                                @user.FullName
+                                @if (isSelf)
+                                {
+                                    <span class="badge bg-primary-subtle text-primary ms-1">Bạn</span>
+                                }
+                            </div>
+                            <div class="small text-muted">@@@user.Username • @user.Email</div>
+                            <div class="small text-muted mt-0.5">@user.AuthoredArticles.Count bài viết</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge @(user.IsActive ? "bg-success" : "bg-danger") rounded-pill">
+                                @(user.IsActive ? "Hoạt động" : "Đã khóa")
+                            </span>
+                            @if (user.MustChangePassword)
+                            {
+                                <div><span class="badge bg-warning text-dark mt-1" style="font-size: 0.68rem;">Cần đổi MK</span></div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (isProtectedAdmin)
+                    {
+                        <div class="mb-2">
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1.5">
+                                <i class="bi bi-shield-lock-fill me-1"></i>Quản trị viên (Được bảo vệ)
+                            </span>
+                        </div>
+                    }
+                    else
+                    {
+                        <form asp-action="UpdateUserRole" method="post" class="mb-2">
+                            <input type="hidden" name="userId" value="@user.Id" />
+                            <label class="small text-muted mb-1">Đổi phân quyền:</label>
+                            <div class="input-group input-group-sm">
+                                <select name="role" class="form-select">
+                                    <option value="@UserRole.User" selected="@(user.Role == UserRole.User)">User (Chờ duyệt)</option>
+                                    <option value="@UserRole.Manager" selected="@(user.Role == UserRole.Manager)">Manager (Đăng ngay)</option>
+                                    <option value="@UserRole.Admin" selected="@(user.Role == UserRole.Admin)">Admin (Quản trị)</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary fw-semibold px-3">Lưu quyền</button>
+                            </div>
+                        </form>
+                    }
+
+                    <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill flex-grow-1" onclick="openResetPasswordModal(@user.Id, '@user.Username', '@user.FullName.Replace("'", "\\'")')">
+                            <i class="bi bi-key me-1"></i> Đổi MK
+                        </button>
+                        @if (!isProtectedAdmin && !isSelf)
+                        {
+                            <form asp-action="ToggleUserLock" method="post" class="flex-grow-1 m-0">
+                                <input type="hidden" name="userId" value="@user.Id" />
+                                <button type="submit" class="btn btn-sm w-100 @(user.IsActive ? "btn-outline-warning" : "btn-outline-success") rounded-pill">
+                                    <i class="bi @(user.IsActive ? "bi-lock" : "bi-unlock") me-1"></i>@(user.IsActive ? "Khóa" : "Mở khóa")
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill flex-grow-1" onclick="openDeleteUserModal(@user.Id, '@user.Username', '@user.FullName.Replace("'", "\\'")', '@user.Role.GetRoleDisplayName()', @user.AuthoredArticles.Count)">
+                                <i class="bi bi-trash me-1"></i> Xóa
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Reset User Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form asp-action="ResetUserPassword" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" id="resetPwdUserId" />
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="bi bi-key-fill me-2"></i>Đặt Lại Mật Khẩu Thành Viên
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="p-2.5 bg-surface-alt rounded-3 border mb-3 small">
+                        Tài khoản: <strong id="resetPwdUserDisplay"></strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Mật khẩu mới *</label>
+                        <div class="input-group">
+                            <input type="text" name="newPassword" id="resetNewPasswordInput" class="form-control font-monospace" required minlength="6" placeholder="Nhập tối thiểu 6 ký tự..." />
+                            <button type="button" class="btn btn-outline-secondary" onclick="generateRandomPwd()" title="Tạo mật khẩu mạnh ngẫu nhiên">
+                                <i class="bi bi-shuffle"></i> Tạo nhanh
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" onclick="copyNewPwd()" title="Sao chép mật khẩu">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="mustChangePassword" value="true" id="mustChangePwdCheck" checked />
+                        <label class="form-check-label small fw-semibold" for="mustChangePwdCheck">
+                            Bắt buộc thành viên đổi mật khẩu ở lần đăng nhập tiếp theo
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">
+                        <i class="bi bi-check2-circle me-1"></i> Cập nhật mật khẩu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Non-Admin User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form asp-action="DeleteUser" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" id="deleteUserIdInput" />
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="bi bi-person-x-fill me-2"></i>Xác Nhận Xóa Người Dùng
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger border-0 rounded-3 small mb-3">
+                        Bạn đang chuẩn bị xóa vĩnh viễn tài khoản <strong id="deleteUserDisplay"></strong> (<span id="deleteUserRoleDisplay"></span>). Thao tác này không thể hoàn tác!
+                    </div>
+
+                    <div class="p-3 bg-surface-alt rounded-3 border">
+                        <div class="small text-muted mb-2">
+                            Người dùng này hiện có <strong id="deleteUserArticleCount">0</strong> bài viết trên hệ thống.
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="deleteArticles" value="true" id="deleteArticlesCheck" />
+                            <label class="form-check-label small fw-semibold text-danger" for="deleteArticlesCheck">
+                                Xóa luôn toàn bộ bài viết của người dùng này (nếu không chọn, bài viết vẫn được giữ lại)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold">
+                        <i class="bi bi-trash me-1"></i> Xác nhận xóa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openResetPasswordModal(userId, username, fullName) {
+            document.getElementById('resetPwdUserId').value = userId;
+            document.getElementById('resetPwdUserDisplay').textContent = `${fullName} (@@${username})`;
+            document.getElementById('resetNewPasswordInput').value = '';
+            const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+            modal.show();
+        }
+
+        function openDeleteUserModal(userId, username, fullName, roleName, articleCount) {
+            document.getElementById('deleteUserIdInput').value = userId;
+            document.getElementById('deleteUserDisplay').textContent = `${fullName} (@@${username})`;
+            document.getElementById('deleteUserRoleDisplay').textContent = roleName;
+            document.getElementById('deleteUserArticleCount').textContent = articleCount;
+            document.getElementById('deleteArticlesCheck').checked = false;
+            const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+            modal.show();
+        }
+
+        function filterUsers() {
+            const q = (document.getElementById('userSearchInput').value || '').trim().toLowerCase();
+            const role = document.getElementById('userRoleFilter').value;
+            document.querySelectorAll('.user-filter-item').forEach((el) => {
+                const matchRole = !role || el.getAttribute('data-role') === role;
+                const matchText = !q || (el.getAttribute('data-search') || '').includes(q);
+                el.style.display = (matchRole && matchText) ? '' : 'none';
+            });
+        }
+
+        function generateRandomPwd() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@@#$%';
+            let pwd = '';
+            const arr = new Uint32Array(12);
+            window.crypto.getRandomValues(arr);
+            for (let i = 0; i < 12; i++) {
+                pwd += chars[arr[i] % chars.length];
+            }
+            document.getElementById('resetNewPasswordInput').value = pwd;
+        }
+
+        function copyNewPwd() {
+            const val = document.getElementById('resetNewPasswordInput').value;
+            if (!val) return;
+            navigator.clipboard.writeText(val);
+        }
+    </script>
+}

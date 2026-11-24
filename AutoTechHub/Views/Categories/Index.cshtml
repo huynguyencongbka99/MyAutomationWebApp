@@ -35,7 +35,7 @@
 
                     <div class="d-flex align-items-center justify-content-between pt-3 border-top">
                         <span class="badge bg-secondary-subtle text-secondary fw-semibold">
-                            @cat.Articles.Count bài viết
+                            @cat.Articles.Count(a => a.IsPublished && a.ApprovalStatus == ArticleApprovalStatus.Approved) bài viết
                         </span>
                         <a asp-action="Details" asp-route-slug="@cat.Slug" class="btn btn-sm btn-outline-@cat.BadgeColor rounded-pill px-3">
                             Khám phá <i class="bi bi-arrow-right ms-1"></i>

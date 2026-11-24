@@ -1,0 +1,9 @@
+<Project>
+  <!-- On Windows outside containers, place obj/bin under LocalAppData so Windows folder attributes/ACLs on workspace folders never trigger MSB3231 -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT' and '$(DOTNET_RUNNING_IN_CONTAINER)' != 'true'">
+    <BaseIntermediateOutputPath>$(LOCALAPPDATA)\AutoTechHub\build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
+    <BaseOutputPath>$(LOCALAPPDATA)\AutoTechHub\build\$(MSBuildProjectName)\bin\</BaseOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**;obj/**;bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

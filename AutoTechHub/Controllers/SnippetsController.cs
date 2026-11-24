@@ -1,5 +1,7 @@
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AutoTechHub.Extensions;
 using AutoTechHub.Models;
 using AutoTechHub.Services;
 
@@ -29,12 +31,14 @@ namespace AutoTechHub.Controllers
         }
 
         // GET: /Snippets/Create
+        [Authorize(Roles = "Admin,Manager")]
         public IActionResult Create()
         {
-            return View(new CodeSnippet());
+            return View(new CodeSnippet { Author = User.GetFullName() });
         }
 
         // POST: /Snippets/Create
+        [Authorize(Roles = "Admin,Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CodeSnippet snippet)
@@ -50,6 +54,7 @@ namespace AutoTechHub.Controllers
         }
 
         // POST: /Snippets/Delete/5
+        [Authorize(Roles = "Admin,Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)

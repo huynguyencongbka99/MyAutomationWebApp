@@ -1,0 +1,153 @@
+@model AutoTechHub.Models.ViewModels.AdminAdsViewModel
+@{
+    ViewData["Title"] = "Quản Lý Phân Mục Quảng Cáo";
+}
+
+<div class="container my-4 my-md-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-megaphone-fill text-success me-2"></i>Quản Lý Quảng Cáo (Ads)
+            </h2>
+            <p class="text-muted small mb-0">Chèn banner hình ảnh, liên kết tài trợ hoặc mã HTML/AdSense vào các vị trí trên web khi cần dùng.</p>
+        </div>
+
+        <a asp-action="CreateAd" class="btn btn-success rounded-pill px-4 shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Thêm quảng cáo mới
+        </a>
+    </div>
+
+    <partial name="_AdminNav" />
+
+    <!-- Global Ads Switch -->
+    <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h6 class="fw-bold mb-1">Trạng thái hiển thị Quảng cáo toàn trang</h6>
+                <p class="small text-muted mb-0">Tắt công tắc này nếu bạn muốn tạm ẩn toàn bộ quảng cáo mà không cần xóa từng mẫu.</p>
+            </div>
+            <div class="form-check form-switch m-0 bg-surface-alt px-3 py-2 rounded-pill border">
+                <input class="form-check-input" type="checkbox" role="switch" id="adsModuleSwitch" checked="@Model.SiteSetting.EnableAdsModule" onchange="toggleAdsModule(this)">
+                <label class="form-check-label fw-bold small ms-1" for="adsModuleSwitch">
+                    <span id="adsModuleLabel">@(Model.SiteSetting.EnableAdsModule ? "Đang BẬT quảng cáo" : "Đang TẮT (Chế độ chờ)")</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ads List -->
+    <div class="card bg-body border rounded-4 p-3 p-md-4 shadow-sm">
+        <h5 class="fw-bold mb-3"><i class="bi bi-collection-play text-success me-2"></i>Danh Sách Chiến Dịch Quảng Cáo (@Model.Ads.Count)</h5>
+
+        @if (!Model.Ads.Any())
+        {
+            <div class="text-center py-5 text-muted bg-surface-alt rounded-3">
+                <i class="bi bi-megaphone fs-1 d-block mb-2"></i>
+                Chưa có quảng cáo nào. Nhấn "Thêm quảng cáo mới" để tạo banner hoặc mã nhúng.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Chiến dịch</th>
+                            <th>Vị trí</th>
+                            <th>Loại</th>
+                            <th>Lượt nhấp</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ad in Model.Ads)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@ad.Title</div>
+                                    <div class="small text-muted text-truncate" style="max-width: 280px;">@ad.Description</div>
+                                </td>
+                                <td><span class="badge bg-info-subtle text-info">@ad.Placement</span></td>
+                                <td><span class="badge bg-secondary-subtle text-secondary">@ad.AdType</span></td>
+                                <td class="fw-bold text-primary">@ad.ClickCount</td>
+                                <td>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="adSw_@ad.Id" checked="@ad.IsActive" onchange="toggleAd(@ad.Id, this)">
+                                        <label class="form-check-label small" for="adSw_@ad.Id">
+                                            <span id="adLbl_@ad.Id">@(ad.IsActive ? "Bật" : "Tắt")</span>
+                                        </label>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-action="EditAd" asp-route-id="@ad.Id" class="btn btn-outline-secondary" title="Sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form asp-action="DeleteAd" asp-route-id="@ad.Id" method="post" onsubmit="return confirm('Xóa quảng cáo này?');" style="display:inline;">
+                                            <button type="submit" class="btn btn-outline-danger" title="Xóa">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="d-md-none d-flex flex-column gap-3">
+                @foreach (var ad in Model.Ads)
+                {
+                    <div class="p-3 bg-surface-alt rounded-4 border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-info-subtle text-info small">@ad.Placement</span>
+                            <span class="small fw-semibold text-primary">@ad.ClickCount clicks</span>
+                        </div>
+                        <h6 class="fw-bold mb-1">@ad.Title</h6>
+                        <p class="small text-muted mb-2">@ad.Description</p>
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" role="switch" checked="@ad.IsActive" onchange="toggleAd(@ad.Id, this)">
+                                <label class="form-check-label small">@(ad.IsActive ? "Bật" : "Tắt")</label>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="EditAd" asp-route-id="@ad.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Sửa</a>
+                                <form asp-action="DeleteAd" asp-route-id="@ad.Id" method="post" onsubmit="return confirm('Xóa quảng cáo này?');" style="display:inline;">
+                                    <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        async function toggleAdsModule(cb) {
+            const res = await fetch('/Admin/ToggleAdsModule', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('adsModuleLabel').textContent = data.enabled ? 'Đang BẬT quảng cáo' : 'Đang TẮT (Chế độ chờ)';
+            } else {
+                cb.checked = !cb.checked;
+            }
+        }
+
+        async function toggleAd(id, cb) {
+            const res = await fetch(`/Admin/ToggleAdActive/${id}`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                const lbl = document.getElementById(`adLbl_${id}`);
+                if (lbl) lbl.textContent = data.isActive ? 'Bật' : 'Tắt';
+            } else {
+                cb.checked = !cb.checked;
+            }
+        }
+    </script>
+}

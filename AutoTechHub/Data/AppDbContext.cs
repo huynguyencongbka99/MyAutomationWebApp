@@ -15,6 +15,14 @@ namespace AutoTechHub.Data
         public DbSet<ArticleTag> ArticleTags { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<CodeSnippet> CodeSnippets { get; set; }
+        public DbSet<AppUser> Users { get; set; }
+        public DbSet<Advertisement> Advertisements { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<ProductInquiry> ProductInquiries { get; set; }
+        public DbSet<SiteSetting> SiteSettings { get; set; }
+        public DbSet<WebBlock> WebBlocks { get; set; }
+        public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+        public DbSet<MediaAsset> MediaAssets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -50,6 +58,26 @@ namespace AutoTechHub.Data
                 .HasForeignKey(c => c.ArticleId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Article - AuthorUser / ReviewedByUser
+            modelBuilder.Entity<Article>()
+                .HasOne(a => a.AuthorUser)
+                .WithMany(u => u.AuthoredArticles)
+                .HasForeignKey(a => a.AuthorUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Article>()
+                .HasOne(a => a.ReviewedByUser)
+                .WithMany()
+                .HasForeignKey(a => a.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Product - Inquiry
+            modelBuilder.Entity<ProductInquiry>()
+                .HasOne(i => i.Product)
+                .WithMany(p => p.Inquiries)
+                .HasForeignKey(i => i.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Indexes for fast searching
             modelBuilder.Entity<Article>()
                 .HasIndex(a => a.Slug)
@@ -61,6 +89,18 @@ namespace AutoTechHub.Data
 
             modelBuilder.Entity<Tag>()
                 .HasIndex(t => t.Slug)
+                .IsUnique();
+
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
+
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.Slug)
                 .IsUnique();
         }
     }

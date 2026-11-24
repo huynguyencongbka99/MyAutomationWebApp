@@ -1,0 +1,16 @@
+# Visual Studio & .NET build outputs
+.vs/
+**/bin/
+**/obj/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+TestResults/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
+.vercel
